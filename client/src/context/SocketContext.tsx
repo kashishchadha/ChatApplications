@@ -1,26 +1,34 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext<Socket | null>(null);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const { token } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
+  const { token, user } = useAuth();
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    if (token) {
-      socketRef.current = io('http://localhost:5000', {
+    if (token && user && user._id) {
+      console.log('Creating socket for user', user._id);
+      const s = io('http://localhost:5000', {
         auth: { token }
       });
+      s.on('connect', () => {
+        console.log('Socket connected:', s.id);
+        s.emit('joinGroup', user._id);
+      });
+      setSocket(s);
+      return () => {
+        s.disconnect();
+      };
+    } else {
+      setSocket(null);
     }
-    return () => {
-      socketRef.current?.disconnect();
-    };
-  }, [token]);
+  }, [token, user]);
 
   return (
-    <SocketContext.Provider value={socketRef.current}>
+    <SocketContext.Provider value={socket}>
       {children}
     </SocketContext.Provider>
   );

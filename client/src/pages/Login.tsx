@@ -17,7 +17,9 @@ const Login = () => {
       setError('');
       try {
         const res = await axios.post('http://localhost:5000/api/auth/login', { username, password });
-        login(res.data.token);
+        const user = res.data.user;
+        const fixedUser = { ...user, _id: user._id || user.id };
+        login(res.data.token, fixedUser);
         navigate('/chat');
       } catch (err: any) {
         setError(err.response?.data?.message || 'Login failed');
