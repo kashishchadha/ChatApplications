@@ -24,9 +24,9 @@ const Register = () => {
   );
 
   return (
-    <div className="register-container">
-      <h2>Register</h2>
-      <form onSubmit={handleSubmit} autoComplete="off">
+    <div className="auth-container">
+      <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+        <h2>Register</h2>
         <input
           type="text"
           placeholder="Username"
@@ -42,8 +42,11 @@ const Register = () => {
           required
         />
         <button type="submit">Register</button>
+        {error && <div className="auth-error">{error}</div>}
+        <div className="auth-switch">
+          Already have an account? <span onClick={() => navigate('/login')}>Login</span>
+        </div>
       </form>
-      {error && <div className="error">{error}</div>}
     </div>
   );
 };

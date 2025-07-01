@@ -27,9 +27,9 @@ const Login = () => {
   );
 
   return (
-    <div className="login-container">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit} autoComplete="off">
+    <div className="auth-container">
+      <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+        <h2>Login</h2>
         <input
           type="text"
           placeholder="Username"
@@ -45,8 +45,11 @@ const Login = () => {
           required
         />
         <button type="submit">Login</button>
+        {error && <div className="auth-error">{error}</div>}
+        <div className="auth-switch">
+          Don't have an account? <span onClick={() => navigate('/register')}>Register</span>
+        </div>
       </form>
-      {error && <div className="error">{error}</div>}
     </div>
   );
 };
