@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/Chat.css';
 
 type UserType = { _id: string; username: string };
-type GroupType = { _id: string; name: string };
+type GroupType = { _id: string; name: string; members?: string[] };
 type MessageType={_id:string,content:string,sender:string,recipient?:string,group?:string,createdAt:string}
 
 
@@ -277,15 +277,25 @@ const Chat = () => {
         </ul>
         <h3>Groups</h3>
         <ul>
-          {groups.map(group => (
-            <li
-              key={group._id}
-              className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
-              onClick={() => setSelectedChat({ type: 'group', id: group._id })}
-            >
-              {group.name}
-            </li>
-          ))}
+          {groups
+            .filter(group => {
+              if (!user) return false;
+              // If group.members exists, filter by membership
+              if (Array.isArray(group.members)) {
+                return group.members.includes(user._id);
+              }
+              // If no members field, show all (fallback)
+              return true;
+            })
+            .map(group => (
+              <li
+                key={group._id}
+                className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
+                onClick={() => setSelectedChat({ type: 'group', id: group._id })}
+              >
+                {group.name}
+              </li>
+            ))}
         </ul>
         <button onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
       </aside>
