@@ -19,6 +19,9 @@ const Chat = () => {
   const [groupMembers, setGroupMembers] = useState<UserType[]>([]);
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupMembers, setNewGroupMembers] = useState<string[]>([]);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -91,8 +94,24 @@ const Chat = () => {
   );
 
   // Placeholder for group creation
-  const handleCreateGroup = () => {
-    alert('Group creation coming soon!');
+  const handleCreateGroup = async () => {
+    if (!newGroupName || newGroupMembers.length === 0) {
+      alert('Please enter a group name and select at least one member.');
+      return;
+    }
+    try {
+      await axios.post(
+        'http://localhost:5000/api/groups/create',
+        { name: newGroupName, members: newGroupMembers },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowCreateGroup(false);
+      setNewGroupName('');
+      setNewGroupMembers([]);
+      fetchGroups();
+    } catch (err) {
+      alert('Failed to create group.');
+    }
   };
 
   const handleOpenAddMembers = () => {
@@ -108,6 +127,17 @@ const Chat = () => {
   const handleCloseAddMembers = () => {
     setShowAddMembers(false);
   };
+
+  // Fetch groups
+  const fetchGroups = useCallback(() => {
+    axios
+      .get('http://localhost:5000/api/groups/my', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setGroups(res.data));
+  }, [token]);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   return (
     <div className="chat-container">
@@ -177,7 +207,7 @@ const Chat = () => {
             )}
           </div>
         )}
-        <button onClick={handleCreateGroup}>+ Create Group</button>
+        <button onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
       </aside>
       <main className="chat-main">
         <div className="chat-messages">
@@ -202,6 +232,42 @@ const Chat = () => {
           <button type="submit">Send</button>
         </form>
       </main>
+      {showCreateGroup && (
+        <div className="modal">
+          <div className="modal-content">
+            <h5>Create New Group</h5>
+            <input
+              type="text"
+              placeholder="Group name"
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+            />
+            <ul>
+              {users.map(user => (
+                <li key={user._id}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      value={user._id}
+                      checked={newGroupMembers.includes(user._id)}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setNewGroupMembers(prev => [...prev, user._id]);
+                        } else {
+                          setNewGroupMembers(prev => prev.filter(id => id !== user._id));
+                        }
+                      }}
+                    />
+                    {user.username}
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <button onClick={handleCreateGroup}>Create</button>
+            <button onClick={() => setShowCreateGroup(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
