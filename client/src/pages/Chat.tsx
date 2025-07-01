@@ -16,6 +16,9 @@ const Chat = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [groupMembers, setGroupMembers] = useState<UserType[]>([]);
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -92,6 +95,20 @@ const Chat = () => {
     alert('Group creation coming soon!');
   };
 
+  const handleOpenAddMembers = () => {
+    setShowAddMembers(true);
+  };
+
+  const handleAddMembers = () => {
+    // Implementation of adding members
+    alert('Members added');
+    setShowAddMembers(false);
+  };
+
+  const handleCloseAddMembers = () => {
+    setShowAddMembers(false);
+  };
+
   return (
     <div className="chat-container">
       <aside className="chat-sidebar">
@@ -119,6 +136,47 @@ const Chat = () => {
             </li>
           ))}
         </ul>
+        {selectedChat?.type === 'group' && (
+          <div className="group-members">
+            <h4>Members</h4>
+            <ul>
+              {groupMembers.map(member => (
+                <li key={member._id}>{member.username}</li>
+              ))}
+            </ul>
+            <button onClick={handleOpenAddMembers}>Add Members</button>
+            {showAddMembers && (
+              <div className="modal">
+                <h5>Select users to add:</h5>
+                <ul>
+                  {users
+                    .filter(u => !groupMembers.some(m => m._id === u._id))
+                    .map(user => (
+                      <li key={user._id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            value={user._id}
+                            checked={selectedMembers.includes(user._id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedMembers(prev => [...prev, user._id]);
+                              } else {
+                                setSelectedMembers(prev => prev.filter(id => id !== user._id));
+                              }
+                            }}
+                          />
+                          {user.username}
+                        </label>
+                      </li>
+                    ))}
+                </ul>
+                <button onClick={handleAddMembers}>Add</button>
+                <button onClick={handleCloseAddMembers}>Cancel</button>
+              </div>
+            )}
+          </div>
+        )}
         <button onClick={handleCreateGroup}>+ Create Group</button>
       </aside>
       <main className="chat-main">

@@ -9,6 +9,7 @@ import Message from './models/Message';
 import Group from './models/Group';
 import groupRoutes from './routes/group';
 import messageRoutes from './routes/message';
+import userRoutes from './routes/user';
 
 dotenv.config();
 
