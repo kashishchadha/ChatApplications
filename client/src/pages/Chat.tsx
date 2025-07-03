@@ -404,7 +404,9 @@ const Chat = () => {
             <div
               key={idx}
               className={`chat-message ${msg.sender === user?._id ? 'sent' : 'received'}`}
-              onDoubleClick={() => startEditing(msg._id, msg.content)}
+              onDoubleClick={() => {
+                if (msg.sender === user?._id) startEditing(msg._id, msg.content);
+              }}
             >
               {editingMessageId === msg._id ? (
                 <form onSubmit={handleEditMessage} style={{ display: 'flex', alignItems: 'center' }}>
