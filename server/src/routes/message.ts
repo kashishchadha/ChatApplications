@@ -54,6 +54,7 @@ router.delete('/:messageId', authMiddleware, async (req: Request, res: Response)
 router.get('/user/:userId', authMiddleware, async (req, res) => {
   // @ts-ignore
   const myId = req.userId;
+  
   const otherId = req.params.userId;
   try {
     const messages = await Message.find({

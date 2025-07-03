@@ -10,7 +10,7 @@ console.log('Group routes loaded');
 
 // Create a new group
 router.post('/create', authMiddleware, async (req: Request, res: Response) => {
-  const { name, members } = req.body; // members: array of userIds
+  const { name, members } = req.body; 
   try {
     const group = await Group.create({ name, members });
     res.status(201).json(group);
@@ -19,7 +19,7 @@ router.post('/create', authMiddleware, async (req: Request, res: Response) => {
   }
 });
 
-// Get all groups for a user
+
 router.get('/my', authMiddleware, async (req: Request, res: Response) => {
   try {
     // @ts-ignore

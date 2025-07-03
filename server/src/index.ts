@@ -20,40 +20,42 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
+
 mongoose.connect('mongodb://localhost:27017/chatapp')
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Test route
+
 app.get('/', (req, res) => {
   res.send('Server is running!');
 });
 
-// Auth routes
+
 app.use('/api/auth', authRoutes);
 
-// Group routes
+
 app.use('/api/groups', groupRoutes);
 
-// Message routes
+
 app.use('/api/messages', messageRoutes);
 
-// User routes
+
 app.use('/api/users', userRoutes);
+
+
 
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  // Join a group (room)
+ 
   socket.on('joinGroup', (groupId) => {
     socket.join(groupId);
     console.log(`User ${socket.id} joined group ${groupId}`);
   });
 
-  // Send a message (to a group or direct)
+ 
   socket.on('sendMessage', async (data) => {
-    // data: { sender, content, group?, recipient? }
+    
     const { sender, content, group, recipient } = data;
     try {
       const message = await Message.create({ sender, content, group, recipient });
