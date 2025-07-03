@@ -1,10 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMessage extends Document {
-  sender: string; // userId
+  sender: string; 
   content: string;
-  group?: string; // groupId (for group chat)
-  recipient?: string; // userId (for 1-to-1 chat)
+  group?: string; 
+  recipient?: string; 
   createdAt: Date;
 }
 

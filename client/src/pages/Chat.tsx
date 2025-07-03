@@ -5,7 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/Chat.css';
 
 type UserType = { _id: string; username: string };
-type GroupType = { _id: string; name: string; members?: string[] };
+type GroupType = {
+  _id: string;
+  name: string;
+  members?: string[];
+  creator?: string | { _id: string; username?: string };
+};
 type MessageType={_id:string,content:string,sender:string,recipient?:string,group?:string,createdAt:string}
 
 
@@ -102,13 +107,15 @@ const Chat = () => {
     };
     console.log('Emitting sendMessage:', outgoing);
 
-    // Optimistically add the message to the UI
-    const newMsg = {
-      _id: Math.random().toString(36).substr(2, 9),
-      ...outgoing,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, newMsg]);
+    if (selectedChat.type === 'group') {
+      // Only optimistically add for group chats (optional)
+      const newMsg = {
+        _id: Math.random().toString(36).substr(2, 9),
+        ...outgoing,
+        createdAt: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, newMsg]);
+    }
 
     if (selectedChat.type === 'user') {
       socket.emit('sendMessage', {
@@ -324,7 +331,24 @@ const Chat = () => {
                   }}>
                     {member.username[0].toUpperCase()}
                   </div>
-                  <span style={{ flex: 1 }}>{member.username}</span>
+                  <span style={{ flex: 1 }}>
+                    {member.username}
+                    {(() => {
+                      const group = groups.find(g => g._id === selectedChat.id);
+                      const isCreator =
+                        group &&
+                        group.creator &&
+                        (
+                          (typeof group.creator === 'string' && group.creator === member._id) ||
+                          (typeof group.creator === 'object' && group.creator._id === member._id)
+                        );
+                      return isCreator ? (
+                        <span style={{ marginLeft: 8, color: '#00bcd4', fontWeight: 'bold', fontSize: 13 }}>
+                          (admin)
+                        </span>
+                      ) : null;
+                    })()}
+                  </span>
                   {member._id !== user?._id && (
                     <button
                       onClick={() => {
@@ -349,6 +373,45 @@ const Chat = () => {
               ))}
             </ul>
             <button onClick={() => setShowAddMembers(true)} style={{ marginTop: 8 }}>Add Members</button>
+            {(() => {
+              const group = groups.find(g => g._id === selectedChat.id);
+              console.log('DEBUG group:', group, 'user:', user?._id);
+
+              // Robust check for creator
+              const isCreator =
+                group &&
+                group.creator &&
+                (
+                  (typeof group.creator === 'string' && group.creator === user?._id) ||
+                  (typeof group.creator === 'object' && group.creator._id === user?._id)
+                );
+
+              if (isCreator) {
+                return (
+                  <button
+                    style={{ marginTop: 8, background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, marginLeft: 3, padding: '6px 16px', cursor: 'pointer', fontWeight: 'bold' }}
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
+                        try {
+                          await axios.delete(
+                            `http://localhost:5000/api/groups/${selectedChat.id}`,
+                            { headers: { Authorization: `Bearer ${token}` } }
+                          );
+                          setGroups(prev => prev.filter(g => g._id !== selectedChat.id));
+                          setSelectedChat(null);
+                          alert('Group deleted!');
+                        } catch (err) {
+                          alert('Failed to delete group.');
+                        }
+                      }
+                    }}
+                  >
+                    Delete Group
+                  </button>
+                );
+              }
+              return null;
+            })()}
             {showAddMembers && (
               <div className="modal">
                 <div className="modal-content" style={{ minWidth: 320, maxWidth: 400, borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', background: '#fff', padding: '2rem 1.5rem' }}>

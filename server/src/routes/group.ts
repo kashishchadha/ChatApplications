@@ -12,19 +12,21 @@ console.log('Group routes loaded');
 router.post('/create', authMiddleware, async (req: Request, res: Response) => {
   const { name, members } = req.body; 
   try {
-    const group = await Group.create({ name, members });
+    // @ts-ignore
+    const creator = req.userId;
+    const group = await Group.create({ name, members, creator });
     res.status(201).json(group);
   } catch (err) {
     res.status(500).json({ message: 'Error creating group', error: err });
   }
 });
 
-
+//all groups
 router.get('/my', authMiddleware, async (req: Request, res: Response) => {
   try {
     // @ts-ignore
-    const userId = req.userId; // userId is set by authMiddleware
-    const groups = await Group.find({ members: userId });
+    const userId = req.userId;
+    const groups = await Group.find({ members: userId }).populate('creator', '_id username');
     res.json(groups);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching groups', error: err });
@@ -82,15 +84,19 @@ router.put('/:groupId', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Delete group
-router.delete('/:groupId', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:groupId', authMiddleware, async (req, res) => {
   try {
     const group = await Group.findById(req.params.groupId);
     if (!group) {
       res.status(404).json({ message: 'Group not found' });
       return;
     }
+    if (group.creator.toString() !== (req as any).userId) {
+      res.status(403).json({ message: 'Only the group creator can delete this group.' });
+      return;
+    }
     await group.deleteOne();
-    res.json({ message: 'Group deleted' });
+    res.json({ message: 'Group deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting group', error: err });
   }
