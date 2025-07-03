@@ -31,6 +31,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
+  const [showMembersMenu, setShowMembersMenu] = useState(false);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -304,124 +305,146 @@ const Chat = () => {
               </li>
             ))}
         </ul>
-        <button onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
+        <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
       </aside>
       <main className="chat-main">
         <div className="chat-header">
-          <h2>{getChatTitle()}</h2>
+          {selectedChat?.type !== 'group' && <h2>{getChatTitle()}</h2>}
         </div>
         {selectedChat?.type === 'group' && (
           <div className="group-members">
-            <h4>Members</h4>
-            <ul style={{ padding: 0, margin: 0 }}>
-              {groupMembers.map(member => (
-                <li key={member._id} style={{ display: 'flex', alignItems: 'center', marginBottom: 8, padding: 4, borderRadius: 6, background: '#f7f7f7' }}>
-                  <div style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: '50%',
-                    background: '#00bcd4',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold',
-                    fontSize: 16,
-                    marginRight: 12
-                  }}>
-                    {member.username[0].toUpperCase()}
-                  </div>
-                  <span style={{ flex: 1 }}>
-                    {member.username}
-                    {(() => {
-                      const group = groups.find(g => g._id === selectedChat.id);
-                      const isCreator =
-                        group &&
-                        group.creator &&
-                        (
-                          (typeof group.creator === 'string' && group.creator === member._id) ||
-                          (typeof group.creator === 'object' && group.creator._id === member._id)
-                        );
-                      return isCreator ? (
-                        <span style={{ marginLeft: 8, color: '#00bcd4', fontWeight: 'bold', fontSize: 13 }}>
-                          (admin)
-                        </span>
-                      ) : null;
-                    })()}
-                  </span>
-                  {member._id !== user?._id && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Remove ${member.username} from group?`)) handleRemoveMember(member._id);
-                      }}
-                      style={{
-                        marginLeft: 8,
-                        color: '#fff',
-                        background: '#e53935',
-                        border: 'none',
-                        borderRadius: 4,
-                        padding: '4px 12px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        transition: 'background 0.2s'
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <button onClick={() => setShowAddMembers(true)} style={{ marginTop: 8 }}>Add Members</button>
-            {(() => {
-              const group = groups.find(g => g._id === selectedChat.id);
-              console.log('DEBUG group:', group, 'user:', user?._id);
-
-              // Robust check for creator
-              const isCreator =
-                group &&
-                group.creator &&
-                (
-                  (typeof group.creator === 'string' && group.creator === user?._id) ||
-                  (typeof group.creator === 'object' && group.creator._id === user?._id)
-                );
-
-              if (isCreator) {
-                return (
+            <div className="group-members-header">
+              <span className="group-name-header">{getChatTitle()}</span>
+              <button
+                className="group-members-menu-btn"
+                onClick={() => setShowMembersMenu((prev) => !prev)}
+                aria-label="Show group members menu"
+              >
+                ☰
+              </button>
+            </div>
+            {showMembersMenu && !showAddMembers && (
+              <div className="group-members-modal-overlay" onClick={() => setShowMembersMenu(false)}>
+                <div className="group-members-modal" onClick={e => e.stopPropagation()}>
                   <button
-                    style={{ marginTop: 8, background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, marginLeft: 3, padding: '6px 16px', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={async () => {
-                      if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
-                        try {
-                          await axios.delete(
-                            `http://localhost:5000/api/groups/${selectedChat.id}`,
-                            { headers: { Authorization: `Bearer ${token}` } }
-                          );
-                          setGroups(prev => prev.filter(g => g._id !== selectedChat.id));
-                          setSelectedChat(null);
-                          alert('Group deleted!');
-                        } catch (err) {
-                          alert('Failed to delete group.');
-                        }
-                      }
-                    }}
+                    className="group-members-modal-close"
+                    onClick={() => setShowMembersMenu(false)}
+                    aria-label="Close members menu"
                   >
-                    Delete Group
+                    ×
                   </button>
-                );
-              }
-              return null;
-            })()}
+                  <ul className="group-members-list">
+                    {groupMembers.map(member => (
+                      <li key={member._id} className="group-member-item">
+                        <div className="member-avatar">
+                          {member.username[0].toUpperCase()}
+                        </div>
+                        <span className="group-member-info">
+                          <span>
+                            {member.username}
+                            {(() => {
+                              const group = groups.find(g => g._id === selectedChat.id);
+                              const isMemberAdmin =
+                                group &&
+                                group.creator &&
+                                (
+                                  (typeof group.creator === 'string' && group.creator === member._id) ||
+                                  (typeof group.creator === 'object' && group.creator._id === member._id)
+                                );
+                              return isMemberAdmin ? (
+                                <span className="admin-badge">
+                                  (admin)
+                                </span>
+                              ) : null;
+                            })()}
+                          </span>
+                          {(() => {
+                            const group = groups.find(g => g._id === selectedChat.id);
+                            const isAdmin =
+                              group &&
+                              group.creator &&
+                              (
+                                (typeof group.creator === 'string' && group.creator === user?._id) ||
+                                (typeof group.creator === 'object' && group.creator._id === user?._id)
+                              );
+                            const isMemberAdmin =
+                              group &&
+                              group.creator &&
+                              (
+                                (typeof group.creator === 'string' && group.creator === member._id) ||
+                                (typeof group.creator === 'object' && group.creator._id === member._id)
+                              );
+                            if ((isAdmin && !isMemberAdmin) || (member._id === user?._id)) {
+                              return (
+                                <button
+                                  className={`member-action-btn${member._id === user?._id ? ' leave' : ''}`}
+                                  onClick={() => {
+                                    if (member._id === user?._id) {
+                                      if (window.confirm('Are you sure you want to leave this group?')) handleRemoveMember(member._id);
+                                    } else {
+                                      if (window.confirm(`Remove ${member.username} from group?`)) handleRemoveMember(member._id);
+                                    }
+                                  }}
+                                >
+                                  {member._id === user?._id ? 'Leave' : 'Remove'}
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button className="add-members-btn" onClick={e => { e.stopPropagation(); setShowAddMembers(true); }}>Add Members</button>
+                  {(() => {
+                    const group = groups.find(g => g._id === selectedChat.id);
+                    const isCreator =
+                      group &&
+                      group.creator &&
+                      (
+                        (typeof group.creator === 'string' && group.creator === user?._id) ||
+                        (typeof group.creator === 'object' && group.creator._id === user?._id)
+                      );
+                    if (isCreator) {
+                      return (
+                        <button
+                          className="delete-group-btn"
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
+                              try {
+                                await axios.delete(
+                                  `http://localhost:5000/api/groups/${selectedChat.id}`,
+                                  { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                                setGroups(prev => prev.filter(g => g._id !== selectedChat.id));
+                                setSelectedChat(null);
+                                alert('Group deleted!');
+                              } catch (err) {
+                                alert('Failed to delete group.');
+                              }
+                            }
+                          }}
+                        >
+                          Delete Group
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+            )}
             {showAddMembers && (
               <div className="modal">
-                <div className="modal-content" style={{ minWidth: 320, maxWidth: 400, borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', background: '#fff', padding: '2rem 1.5rem' }}>
-                  <h5 style={{ marginTop: 0, marginBottom: 16 }}>Add Members</h5>
-                  <ul style={{ listStyle: 'none', padding: 0, maxHeight: 180, overflowY: 'auto', marginBottom: 16 }}>
+                <div className="modal-content add-members-modal-content">
+                  <h5 className="add-members-title">Add Members</h5>
+                  <ul className="add-members-list">
                     {users
                       .filter(u => !groupMembers.some(m => m._id === u._id))
                       .map(user => (
-                        <li key={user._id} style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', width: '100%' }}>
+                        <li key={user._id} className="add-member-item">
+                          <label className="add-member-label">
                             <input
                               type="checkbox"
                               value={user._id}
@@ -433,29 +456,17 @@ const Chat = () => {
                                   setSelectedMembers(prev => prev.filter(id => id !== user._id));
                                 }
                               }}
-                              style={{ marginRight: 10, accentColor: '#00bcd4', width: 18, height: 18 }}
+                              className="add-member-checkbox"
                             />
-                            <div style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: '50%',
-                              background: '#00bcd4',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 'bold',
-                              fontSize: 15,
-                              marginRight: 10
-                            }}>{user.username[0].toUpperCase()}</div>
+                            <div className="add-member-avatar">{user.username[0].toUpperCase()}</div>
                             <span>{user.username}</span>
                           </label>
                         </li>
                       ))}
                   </ul>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <button onClick={handleAddMembers} style={{ background: '#00bcd4', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 'bold', cursor: 'pointer' }}>Add</button>
-                    <button onClick={() => setShowAddMembers(false)} style={{ background: '#eee', color: '#222', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+                  <div className="add-members-actions">
+                    <button className="add-members-confirm-btn" onClick={handleAddMembers}>Add</button>
+                    <button className="add-members-cancel-btn" onClick={() => setShowAddMembers(false)}>Cancel</button>
                   </div>
                 </div>
               </div>

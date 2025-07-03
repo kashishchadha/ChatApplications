@@ -1,25 +1,26 @@
 .chat-container {
   display: flex;
-  height: 80vh;
+  height: 83vh;
   margin: 2rem auto;
-  max-width: 900px;
-  background: #fff;
-  border-radius: 8px;
+  max-width: 1400px;
+  
+  border-radius: 8px 8px 8px 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   overflow: hidden;
 }
 
 .chat-sidebar {
   width: 220px;
-  background: #222;
-  color: #fff;
+  background: #cccfd1;
+  color: black;
   padding: 1rem;
+  border-radius: 8px;
   border-right: 1px solid #eee;
 }
 
 .chat-sidebar h3 {
   margin-top: 0;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   margin-bottom: 1rem;
 }
 
@@ -27,6 +28,7 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  font-size: 1.2rem;
 }
 
 .chat-sidebar li {
@@ -41,6 +43,20 @@
 .chat-sidebar li:hover {
   background: #00bcd4;
   color: #fff;
+}
+.add-group-btn{
+
+  margin-top: 8px;
+  width: 100%;
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
 }
 
 .chat-main {
@@ -168,4 +184,291 @@
 }
 .modal-content button:hover:not(:last-child) {
   background: #2196f3;
+}
+
+/* Group Members Menu Bar */
+.group-members-menu-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+.group-members-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #00bcd4;
+  padding: 0;
+  border-radius: 6px;
+  transition: background 0.2s;
+  height: 36px;
+  width: 36px;
+  margin: 0;
+}
+.group-members-menu-btn:hover {
+  background: #e3f7fa;
+}
+
+/* Group Members Modal Overlay */
+.group-members-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.18);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-members-modal {
+  background: #fff;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.14);
+  border-radius: 16px;
+  padding: 2.5rem 2.5rem 2rem 2.5rem;
+  min-width: 340px;
+  max-width: 420px;
+  width: 90%;
+  position: relative;
+  z-index: 1001;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.group-members-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #888;
+  cursor: pointer;
+  z-index: 1002;
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.group-members-modal-close:hover {
+  background: #f2f0d5;
+}
+
+.group-members-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.group-member-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px;
+  border-radius: 6px;
+  background: #f7f7f7;
+}
+.group-member-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #00bcd4;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin-right: 12px;
+}
+
+.admin-badge {
+  margin-left: 8px;
+  color: #00bcd4;
+  font-weight: bold;
+  font-size: 13px;
+  background: #e3f7fa;
+  border-radius: 12px;
+  padding: 2px 10px;
+  letter-spacing: 0.5px;
+}
+
+.member-action-btn {
+  margin-left: 8px;
+  color: #fff;
+  background: #e53935;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+.member-action-btn.leave {
+  background: #888;
+}
+.member-action-btn:hover {
+  background: #b71c1c;
+}
+.member-action-btn.leave:hover {
+  background: #555;
+}
+
+.add-members-btn {
+  margin-top: 8px;
+  width: 100%;
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+.add-members-btn:hover {
+  background: #0097a7;
+}
+
+.delete-group-btn {
+  margin-top: 8px;
+  width: 100%;
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+.delete-group-btn:hover {
+  background: #b71c1c;
+}
+
+/* Add Members Modal */
+.add-members-modal-content {
+  min-width: 320px;
+  max-width: 400px;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  background: #fff;
+  padding: 2rem 1.5rem;
+}
+.add-members-title {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #00bcd4;
+}
+.add-members-list {
+  list-style: none;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.add-member-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.add-member-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+}
+.add-member-checkbox {
+  margin-right: 10px;
+  accent-color: #00bcd4;
+  width: 18px;
+  height: 18px;
+}
+.add-member-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #00bcd4;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 15px;
+  margin-right: 10px;
+}
+.add-members-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.add-members-confirm-btn {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s;
+}
+.add-members-confirm-btn:hover {
+  background: #0097a7;
+}
+.add-members-cancel-btn {
+  background: #eee;
+  color: #222;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 18px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s;
+}
+.add-members-cancel-btn:hover {
+  background: #ccc;
+}
+
+/* Group Members Header */
+.group-members-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 0 8px 0;
+  margin-bottom: 0;
+  min-height: 44px;
+}
+.group-name-header {
+  font-size: 1.18rem;
+  font-weight: 600;
+  color: #222;
+  letter-spacing: 0.5px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  height: 36px;
 }
