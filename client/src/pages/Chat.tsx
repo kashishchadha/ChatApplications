@@ -268,31 +268,10 @@ const Chat = () => {
 
       const fileInfo = uploadResponse.data.file;
       
-      // Create message with file attachment
-      const messageData: any = {
-        content: `Sent: ${file.name}`,
-        fileAttachment: fileInfo
-      };
-
-      if (selectedChat.type === 'user') {
-        messageData.recipient = selectedChat.id;
-      } else {
-        messageData.group = selectedChat.id;
-      }
-
-      const messageResponse = await axios.post(
-        'http://localhost:5000/api/messages',
-        messageData,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // Add message to local state
-      setMessages(prev => [...prev, messageResponse.data]);
-      
-      // Emit socket event for real-time
+      // Send message via socket only (no duplicate API call)
       if (socket) {
         socket.emit('sendMessage', {
-          content: messageData.content,
+          content: `Sent: ${file.name}`,
           sender: user?._id,
           recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
           group: selectedChat.type === 'group' ? selectedChat.id : undefined,
@@ -586,7 +565,10 @@ const Chat = () => {
               key={idx}
               className={`chat-message ${msg.sender === user?._id ? 'sent' : 'received'}`}
               onDoubleClick={() => {
-                if (msg.sender === user?._id) startEditing(msg._id, msg.content);
+                // Only allow editing for text messages (not file attachments)
+                if (msg.sender === user?._id && !msg.fileAttachment) {
+                  startEditing(msg._id, msg.content);
+                }
               }}
             >
               {editingMessageId === msg._id ? (

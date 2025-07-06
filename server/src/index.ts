@@ -70,10 +70,12 @@ io.on('connection', (socket) => {
       }
       
       const message = await Message.create(messageData);
+      
+      // Emit to all relevant users
       if (group) {
         io.to(group).emit('receiveMessage', message);
       } else if (recipient) {
-        // For 1-to-1, emit to both sender and recipient (use user-specific rooms)
+        // For 1-to-1, emit to both sender and recipient
         io.to(sender).emit('receiveMessage', message);
         io.to(recipient).emit('receiveMessage', message);
       }
