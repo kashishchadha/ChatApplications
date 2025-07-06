@@ -357,40 +357,42 @@ const Chat = () => {
   return (
     <div className="chat-container">
       <aside className="chat-sidebar">
-        <h3>Direct Messages</h3>
-        <ul>
-          {users.filter(u => u._id !== user?._id).map(userItem => (
-            <li
-              key={userItem._id}
-              className={selectedChat?.type === 'user' && selectedChat.id === userItem._id ? 'active' : ''}
-              onClick={() => setSelectedChat({ type: 'user', id: userItem._id })}
-            >
-              {userItem.username}
-            </li>
-          ))}
-        </ul>
-        <h3>Groups</h3>
-        <ul>
-          {groups
-            .filter(group => {
-              if (!user) return false;
-              // If group.members exists, filter by membership
-              if (Array.isArray(group.members)) {
-                return group.members.includes(user._id);
-              }
-              // If no members field, show all (fallback)
-              return true;
-            })
-            .map(group => (
+        <div className="sidebar-section">
+          <h3>Direct Messages</h3>
+          <ul>
+            {users.filter(u => u._id !== user?._id).map(userItem => (
               <li
-                key={group._id}
-                className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
-                onClick={() => setSelectedChat({ type: 'group', id: group._id })}
+                key={userItem._id}
+                className={selectedChat?.type === 'user' && selectedChat.id === userItem._id ? 'active' : ''}
+                onClick={() => setSelectedChat({ type: 'user', id: userItem._id })}
               >
-                {group.name}
+                {userItem.username}
               </li>
             ))}
-        </ul>
+          </ul>
+        </div>
+        <div className="sidebar-section">
+          <h3>Groups</h3>
+          <ul>
+            {groups
+              .filter(group => {
+                if (!user) return false;
+                if (Array.isArray(group.members)) {
+                  return group.members.includes(user._id);
+                }
+                return true;
+              })
+              .map(group => (
+                <li
+                  key={group._id}
+                  className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
+                  onClick={() => setSelectedChat({ type: 'group', id: group._id })}
+                >
+                  {group.name}
+                </li>
+              ))}
+          </ul>
+        </div>
         <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
       </aside>
       <main className="chat-main">
