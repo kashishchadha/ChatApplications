@@ -69,5 +69,31 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// Create a message with optional file attachment
+router.post('/', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { content, recipient, group, fileAttachment } = req.body;
+    // @ts-ignore
+    const sender = req.userId;
+
+    const messageData: any = {
+      sender,
+      content: content || '',
+      createdAt: new Date()
+    };
+
+    if (recipient) messageData.recipient = recipient;
+    if (group) messageData.group = group;
+    if (fileAttachment) messageData.fileAttachment = fileAttachment;
+
+    const message = new Message(messageData);
+    await message.save();
+    
+    res.status(201).json(message);
+  } catch (err) {
+    res.status(500).json({ message: 'Error creating message', error: err });
+  }
+});
+
 export default router;
 

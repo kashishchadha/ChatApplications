@@ -11,8 +11,21 @@ type GroupType = {
   members?: string[];
   creator?: string | { _id: string; username?: string };
 };
-type MessageType={_id:string,content:string,sender:string,recipient?:string,group?:string,createdAt:string}
-
+type MessageType = {
+  _id: string;
+  content: string;
+  sender: string;
+  recipient?: string;
+  group?: string;
+  createdAt: string;
+  fileAttachment?: {
+    filename: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+    path: string;
+  };
+};
 
 const Chat = () => {
   const { token, user } = useAuth();
@@ -32,6 +45,11 @@ const Chat = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
   const [showMembersMenu, setShowMembersMenu] = useState(false);
+  
+  // File upload states
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -216,6 +234,95 @@ const Chat = () => {
     } catch (err) {
       alert('Failed to delete message.');
     }
+  };
+
+  // File upload functions
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadFile(file);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    if (!selectedChat || !token) {
+      alert('Please select a chat first.');
+      return;
+    }
+
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const uploadResponse = await axios.post(
+        'http://localhost:5000/api/upload/file',
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      const fileInfo = uploadResponse.data.file;
+      
+      // Create message with file attachment
+      const messageData: any = {
+        content: `Sent: ${file.name}`,
+        fileAttachment: fileInfo
+      };
+
+      if (selectedChat.type === 'user') {
+        messageData.recipient = selectedChat.id;
+      } else {
+        messageData.group = selectedChat.id;
+      }
+
+      const messageResponse = await axios.post(
+        'http://localhost:5000/api/messages',
+        messageData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Add message to local state
+      setMessages(prev => [...prev, messageResponse.data]);
+      
+      // Emit socket event for real-time
+      if (socket) {
+        socket.emit('sendMessage', {
+          content: messageData.content,
+          sender: user?._id,
+          recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
+          group: selectedChat.type === 'group' ? selectedChat.id : undefined,
+          fileAttachment: fileInfo
+        });
+      }
+
+      setShowFileUpload(false);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload file.');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const openFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const isImageFile = (mimetype: string) => {
+    return mimetype.startsWith('image/');
   };
 
   const fetchMessages = useCallback(() => {
@@ -497,7 +604,37 @@ const Chat = () => {
                 </form>
               ) : (
                 <>
-                  {msg.content}
+                  {msg.fileAttachment ? (
+                    <div className="file-attachment">
+                      {isImageFile(msg.fileAttachment.mimetype) ? (
+                        <div className="image-attachment">
+                          <img 
+                            src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                            alt={msg.fileAttachment.originalName}
+                            style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px' }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="file-attachment-info">
+                          <div className="file-icon">📎</div>
+                          <div className="file-details">
+                            <div className="file-name">{msg.fileAttachment.originalName}</div>
+                            <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
+                          </div>
+                          <a 
+                            href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                            download={msg.fileAttachment.originalName}
+                            className="download-btn"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      )}
+                      {msg.content && <div className="file-message-text">{msg.content}</div>}
+                    </div>
+                  ) : (
+                    <span>{msg.content}</span>
+                  )}
                   {msg.sender === user?._id && (
                     <button
                       onClick={() => handleDeleteMessage(msg._id)}
@@ -513,25 +650,43 @@ const Chat = () => {
           <div ref={messagesEndRef} />
         </div>
         <form className="chat-input" onSubmit={handleSend}>
+          <div className="input-container">
+            <button
+              type="button"
+              className="upload-btn"
+              onClick={openFileUpload}
+              disabled={!selectedChat || uploadingFile}
+              title="Upload file"
+            >
+              {uploadingFile ? '⏳' : '+'}
+            </button>
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={
+                !input.trim() ||
+                !selectedChat ||
+                !socket ||
+                !user ||
+                !user._id
+              }
+            >
+              Send
+            </button>
+          </div>
           <input
-            type="text"
-            placeholder="Type a message..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            autoFocus
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+            accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx"
           />
-          <button
-            type="submit"
-            disabled={
-              !input.trim() ||
-              !selectedChat ||
-              !socket ||
-              !user ||
-              !user._id
-            }
-          >
-            Send
-          </button>
         </form>
       </main>
       {showCreateGroup && (

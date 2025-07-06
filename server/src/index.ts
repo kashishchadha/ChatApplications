@@ -4,12 +4,14 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth';
 import Message from './models/Message';
 import Group from './models/Group';
 import groupRoutes from './routes/group';
 import messageRoutes from './routes/message';
 import userRoutes from './routes/user';
+import uploadRoutes from './routes/upload';
 
 dotenv.config();
 
@@ -20,6 +22,8 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 mongoose.connect('mongodb://localhost:27017/chatapp')
   .then(() => console.log('MongoDB connected'))
@@ -42,6 +46,8 @@ app.use('/api/messages', messageRoutes);
 
 app.use('/api/users', userRoutes);
 
+app.use('/api/upload', uploadRoutes);
+
 
 
 io.on('connection', (socket) => {
@@ -56,9 +62,14 @@ io.on('connection', (socket) => {
  
   socket.on('sendMessage', async (data) => {
     
-    const { sender, content, group, recipient } = data;
+    const { sender, content, group, recipient, fileAttachment } = data;
     try {
-      const message = await Message.create({ sender, content, group, recipient });
+      const messageData: any = { sender, content, group, recipient };
+      if (fileAttachment) {
+        messageData.fileAttachment = fileAttachment;
+      }
+      
+      const message = await Message.create(messageData);
       if (group) {
         io.to(group).emit('receiveMessage', message);
       } else if (recipient) {

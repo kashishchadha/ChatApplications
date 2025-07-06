@@ -6,6 +6,13 @@ export interface IMessage extends Document {
   group?: string; 
   recipient?: string; 
   createdAt: Date;
+  fileAttachment?: {
+    filename: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+    path: string;
+  };
 }
 
 const MessageSchema: Schema = new Schema({
@@ -13,7 +20,14 @@ const MessageSchema: Schema = new Schema({
   content: { type: String, required: true },
   group: { type: Schema.Types.ObjectId, ref: 'Group' }, // optional
   recipient: { type: Schema.Types.ObjectId, ref: 'User' }, // optional
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  fileAttachment: {
+    filename: { type: String },
+    originalName: { type: String },
+    mimetype: { type: String },
+    size: { type: Number },
+    path: { type: String }
+  }
 });
 
 export default mongoose.model<IMessage>('Message', MessageSchema);

@@ -104,17 +104,20 @@
   background: #fafafa;
 }
 
+.chat-input .input-container {
+  width: 100%;
+}
+
 .chat-input input {
   flex: 1;
   padding: 0.5rem 1rem;
   border: 1px solid #ccc;
   border-radius: 20px;
   outline: none;
-  margin-right: 1rem;
   font-size: 1rem;
 }
 
-.chat-input button {
+.chat-input button[type="submit"] {
   padding: 0.5rem 1.5rem;
   border: none;
   border-radius: 20px;
@@ -123,10 +126,16 @@
   cursor: pointer;
   font-size: 1rem;
   transition: background 0.2s;
+  flex-shrink: 0;
 }
 
-.chat-input button:hover {
+.chat-input button[type="submit"]:hover:not(:disabled) {
   background: #00bcd4;
+}
+
+.chat-input button[type="submit"]:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .modal {
@@ -471,4 +480,117 @@
   display: flex;
   align-items: center;
   height: 36px;
+}
+
+/* File Upload Styles */
+.input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.upload-btn {
+  background: #00bcd4;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: #2196f3;
+  transform: scale(1.05);
+}
+
+.upload-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* File Attachment Styles */
+.file-attachment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.image-attachment {
+  display: flex;
+  justify-content: center;
+}
+
+.image-attachment img {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.image-attachment img:hover {
+  transform: scale(1.02);
+}
+
+.file-attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  max-width: 300px;
+}
+
+.file-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  word-break: break-word;
+  font-size: 0.9rem;
+}
+
+.file-size {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.download-btn {
+  background: rgba(255,255,255,0.2);
+  color: inherit;
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.download-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.file-message-text {
+  margin-top: 0.5rem;
+  font-style: italic;
+  opacity: 0.9;
 }
