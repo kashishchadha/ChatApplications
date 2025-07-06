@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Chat.css';
+import React from 'react';
 
 type UserType = { _id: string; username: string };
 type GroupType = {
@@ -50,6 +51,9 @@ const Chat = () => {
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Add modal state for image preview
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -270,9 +274,19 @@ const Chat = () => {
       
       // Send message via socket only (no duplicate API call)
       if (socket) {
+        const optimisticMsg = {
+          _id: Math.random().toString(36).substr(2, 9),
+          content: `Sent: ${file.name}`,
+          sender: user!._id,
+          recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
+          group: selectedChat.type === 'group' ? selectedChat.id : undefined,
+          createdAt: new Date().toISOString(),
+          fileAttachment: fileInfo
+        } as MessageType;
+        setMessages(prev => [...prev, optimisticMsg]);
         socket.emit('sendMessage', {
           content: `Sent: ${file.name}`,
-          sender: user?._id,
+          sender: user!._id,
           recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
           group: selectedChat.type === 'group' ? selectedChat.id : undefined,
           fileAttachment: fileInfo
@@ -588,37 +602,32 @@ const Chat = () => {
                 </form>
               ) : (
                 <>
-                  {msg.fileAttachment ? (
-                    <div className="file-attachment">
-                      {isImageFile(msg.fileAttachment.mimetype) ? (
-                        <div className="image-attachment">
-                          <img 
-                            src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                            alt={msg.fileAttachment.originalName}
-                            style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px' }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="file-attachment-info">
-                          <div className="file-icon">📎</div>
-                          <div className="file-details">
-                            <div className="file-name">{msg.fileAttachment.originalName}</div>
-                            <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
-                          </div>
-                          <a 
-                            href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                            download={msg.fileAttachment.originalName}
-                            className="download-btn"
-                          >
-                            Download
-                          </a>
-                        </div>
-                      )}
-                      {msg.content && <div className="file-message-text">{msg.content}</div>}
+                  {msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
+                    <div className="image-attachment">
+                      <img
+                        src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                        alt={msg.fileAttachment.originalName}
+                        style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
+                        onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
+                      />
                     </div>
-                  ) : (
-                    <span>{msg.content}</span>
-                  )}
+                  ) : msg.fileAttachment ? (
+                    <div className="file-attachment-info">
+                      <div className="file-icon">📎</div>
+                      <div className="file-details">
+                        <div className="file-name">{msg.fileAttachment.originalName}</div>
+                        <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
+                      </div>
+                      <a
+                        href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                        download={msg.fileAttachment.originalName}
+                        className="download-btn"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  ) : null}
+                  {msg.content && <div className="file-message-text">{msg.content}</div>}
                   {msg.sender === user?._id && (
                     <button
                       onClick={() => handleDeleteMessage(msg._id)}
@@ -633,6 +642,15 @@ const Chat = () => {
           ))}
           <div ref={messagesEndRef} />
         </div>
+        {/* Image Modal */}
+        {modalImage && (
+          <div className="image-modal-overlay" onClick={() => setModalImage(null)}>
+            <div className="image-modal-content" onClick={e => e.stopPropagation()}>
+              <img src={modalImage} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px' }} />
+              <button className="image-modal-close" onClick={() => setModalImage(null)} style={{ marginTop: 8 }}>Close</button>
+            </div>
+          </div>
+        )}
         <form className="chat-input" onSubmit={handleSend}>
           <div className="input-container">
             <button
