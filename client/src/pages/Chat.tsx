@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Chat.css';
 import React from 'react';
+import Navbar from '../components/Navbar';
 
 type UserType = { _id: string; username: string };
 type GroupType = {
@@ -54,6 +55,30 @@ const Chat = () => {
 
   // Add modal state for image preview
   const [modalImage, setModalImage] = useState<string | null>(null);
+
+  // Mobile view state
+  const [mobileView, setMobileView] = useState<'sidebar' | 'chat'>('sidebar');
+
+  // Detect small screen and reset view on resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setMobileView('chat'); // On desktop, always show chat
+      } else {
+        setMobileView(selectedChat ? 'chat' : 'sidebar');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, [selectedChat]);
+
+  // When a chat is selected on mobile, switch to chat view
+  React.useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setMobileView(selectedChat ? 'chat' : 'sidebar');
+    }
+  }, [selectedChat]);
 
   // Fetch users and groups on mount
   useEffect(() => {
@@ -369,83 +394,126 @@ const Chat = () => {
   };
 
   return (
-    <div className="chat-container">
-      <aside className="chat-sidebar">
-        <div className="sidebar-section">
-          <h3>Direct Messages</h3>
-          <ul>
-            {users.filter(u => u._id !== user?._id).map(userItem => (
-              <li
-                key={userItem._id}
-                className={selectedChat?.type === 'user' && selectedChat.id === userItem._id ? 'active' : ''}
-                onClick={() => setSelectedChat({ type: 'user', id: userItem._id })}
-              >
-                {userItem.username}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="sidebar-section">
-          <h3>Groups</h3>
-          <ul>
-            {groups
-              .filter(group => {
-                if (!user) return false;
-                if (Array.isArray(group.members)) {
-                  return group.members.includes(user._id);
-                }
-                return true;
-              })
-              .map(group => (
+    <>
+      {/* Show Navbar only on desktop, or on mobile when sidebar is visible */}
+      {window.innerWidth > 768 || mobileView === 'sidebar' ? <Navbar /> : null}
+      <div className={`chat-container${window.innerWidth <= 768 ? ` mobile-${mobileView}` : ''}`}>
+        {/* Sidebar */}
+        <aside className="chat-sidebar" style={window.innerWidth <= 768 && mobileView !== 'sidebar' ? { display: 'none' } : {}}>
+          <div className="sidebar-section">
+            <h3>Direct Messages</h3>
+            <ul>
+              {users.filter(u => u._id !== user?._id).map(userItem => (
                 <li
-                  key={group._id}
-                  className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
-                  onClick={() => setSelectedChat({ type: 'group', id: group._id })}
+                  key={userItem._id}
+                  className={selectedChat?.type === 'user' && selectedChat.id === userItem._id ? 'active' : ''}
+                  onClick={() => {
+                    setSelectedChat({ type: 'user', id: userItem._id });
+                    if (window.innerWidth <= 768) setMobileView('chat');
+                  }}
                 >
-                  {group.name}
+                  {userItem.username}
                 </li>
               ))}
-          </ul>
-        </div>
-        <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
-      </aside>
-      <main className="chat-main">
-        <div className="chat-header">
-          {selectedChat?.type !== 'group' && <h2>{getChatTitle()}</h2>}
-        </div>
-        {selectedChat?.type === 'group' && (
-          <div className="group-members">
-            <div className="group-members-header">
-              <span className="group-name-header">{getChatTitle()}</span>
-              <button
-                className="group-members-menu-btn"
-                onClick={() => setShowMembersMenu((prev) => !prev)}
-                aria-label="Show group members menu"
-              >
-                ☰
-              </button>
-            </div>
-            {showMembersMenu && !showAddMembers && (
-              <div className="group-members-modal-overlay" onClick={() => setShowMembersMenu(false)}>
-                <div className="group-members-modal" onClick={e => e.stopPropagation()}>
-                  <button
-                    className="group-members-modal-close"
-                    onClick={() => setShowMembersMenu(false)}
-                    aria-label="Close members menu"
+            </ul>
+          </div>
+          <div className="sidebar-section">
+            <h3>Groups</h3>
+            <ul>
+              {groups
+                .filter(group => {
+                  if (!user) return false;
+                  if (Array.isArray(group.members)) {
+                    return group.members.includes(user._id);
+                  }
+                  return true;
+                })
+                .map(group => (
+                  <li
+                    key={group._id}
+                    className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
+                    onClick={() => {
+                      setSelectedChat({ type: 'group', id: group._id });
+                      if (window.innerWidth <= 768) setMobileView('chat');
+                    }}
                   >
-                    ×
-                  </button>
-                  <ul className="group-members-list">
-                    {groupMembers.map(member => (
-                      <li key={member._id} className="group-member-item">
-                        <div className="member-avatar">
-                          {member.username[0].toUpperCase()}
-                        </div>
-                        <span className="group-member-info">
-                          <span>
-                            {member.username}
+                    {group.name}
+                  </li>
+                ))}
+            </ul>
+          </div>
+          <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
+        </aside>
+        {/* Chat Main */}
+        <main className="chat-main" style={window.innerWidth <= 768 && mobileView !== 'chat' ? { display: 'none' } : {}}>
+          <div className="chat-header">
+            {/* Back button for mobile, inside header, left-aligned */}
+            {window.innerWidth <= 768 && mobileView === 'chat' && (
+              <button
+                className="mobile-back-btn"
+                onClick={() => setMobileView('sidebar')}
+              >
+                ← Back
+              </button>
+            )}
+            {selectedChat?.type !== 'group' && <h2>{getChatTitle()}</h2>}
+          </div>
+          {selectedChat?.type === 'group' && (
+            <div className="group-members">
+              <div className="group-members-header">
+                <span className="group-name-header">{getChatTitle()}</span>
+                <button
+                  className="group-members-menu-btn"
+                  onClick={() => setShowMembersMenu((prev) => !prev)}
+                  aria-label="Show group members menu"
+                >
+                  ☰
+                </button>
+              </div>
+              {showMembersMenu && !showAddMembers && (
+                <div className="group-members-modal-overlay" onClick={() => setShowMembersMenu(false)}>
+                  <div className="group-members-modal" onClick={e => e.stopPropagation()}>
+                    <button
+                      className="group-members-modal-close"
+                      onClick={() => setShowMembersMenu(false)}
+                      aria-label="Close members menu"
+                    >
+                      ×
+                    </button>
+                    <ul className="group-members-list">
+                      {groupMembers.map(member => (
+                        <li key={member._id} className="group-member-item">
+                          <div className="member-avatar">
+                            {member.username[0].toUpperCase()}
+                          </div>
+                          <span className="group-member-info">
+                            <span>
+                              {member.username}
+                              {(() => {
+                                const group = groups.find(g => g._id === selectedChat.id);
+                                const isMemberAdmin =
+                                  group &&
+                                  group.creator &&
+                                  (
+                                    (typeof group.creator === 'string' && group.creator === member._id) ||
+                                    (typeof group.creator === 'object' && group.creator._id === member._id)
+                                  );
+                                return isMemberAdmin ? (
+                                  <span className="admin-badge">
+                                    (admin)
+                                  </span>
+                                ) : null;
+                              })()}
+                            </span>
                             {(() => {
                               const group = groups.find(g => g._id === selectedChat.id);
+                              const isAdmin =
+                                group &&
+                                group.creator &&
+                                (
+                                  (typeof group.creator === 'string' && group.creator === user?._id) ||
+                                  (typeof group.creator === 'object' && group.creator._id === user?._id)
+                                );
                               const isMemberAdmin =
                                 group &&
                                 group.creator &&
@@ -453,281 +521,259 @@ const Chat = () => {
                                   (typeof group.creator === 'string' && group.creator === member._id) ||
                                   (typeof group.creator === 'object' && group.creator._id === member._id)
                                 );
-                              return isMemberAdmin ? (
-                                <span className="admin-badge">
-                                  (admin)
-                                </span>
-                              ) : null;
+                              if ((isAdmin && !isMemberAdmin) || (member._id === user?._id)) {
+                                return (
+                                  <button
+                                    className={`member-action-btn${member._id === user?._id ? ' leave' : ''}`}
+                                    onClick={() => {
+                                      if (member._id === user?._id) {
+                                        if (window.confirm('Are you sure you want to leave this group?')) handleRemoveMember(member._id);
+                                      } else {
+                                        if (window.confirm(`Remove ${member.username} from group?`)) handleRemoveMember(member._id);
+                                      }
+                                    }}
+                                  >
+                                    {member._id === user?._id ? 'Leave' : 'Remove'}
+                                  </button>
+                                );
+                              }
+                              return null;
                             })()}
                           </span>
-                          {(() => {
-                            const group = groups.find(g => g._id === selectedChat.id);
-                            const isAdmin =
-                              group &&
-                              group.creator &&
-                              (
-                                (typeof group.creator === 'string' && group.creator === user?._id) ||
-                                (typeof group.creator === 'object' && group.creator._id === user?._id)
-                              );
-                            const isMemberAdmin =
-                              group &&
-                              group.creator &&
-                              (
-                                (typeof group.creator === 'string' && group.creator === member._id) ||
-                                (typeof group.creator === 'object' && group.creator._id === member._id)
-                              );
-                            if ((isAdmin && !isMemberAdmin) || (member._id === user?._id)) {
-                              return (
-                                <button
-                                  className={`member-action-btn${member._id === user?._id ? ' leave' : ''}`}
-                                  onClick={() => {
-                                    if (member._id === user?._id) {
-                                      if (window.confirm('Are you sure you want to leave this group?')) handleRemoveMember(member._id);
-                                    } else {
-                                      if (window.confirm(`Remove ${member.username} from group?`)) handleRemoveMember(member._id);
-                                    }
-                                  }}
-                                >
-                                  {member._id === user?._id ? 'Leave' : 'Remove'}
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button className="add-members-btn" onClick={e => { e.stopPropagation(); setShowAddMembers(true); }}>Add Members</button>
-                  {(() => {
-                    const group = groups.find(g => g._id === selectedChat.id);
-                    const isCreator =
-                      group &&
-                      group.creator &&
-                      (
-                        (typeof group.creator === 'string' && group.creator === user?._id) ||
-                        (typeof group.creator === 'object' && group.creator._id === user?._id)
-                      );
-                    if (isCreator) {
-                      return (
-                        <button
-                          className="delete-group-btn"
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
-                              try {
-                                await axios.delete(
-                                  `http://localhost:5000/api/groups/${selectedChat.id}`,
-                                  { headers: { Authorization: `Bearer ${token}` } }
-                                );
-                                setGroups(prev => prev.filter(g => g._id !== selectedChat.id));
-                                setSelectedChat(null);
-                                alert('Group deleted!');
-                              } catch (err) {
-                                alert('Failed to delete group.');
-                              }
-                            }
-                          }}
-                        >
-                          Delete Group
-                        </button>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-            )}
-            {showAddMembers && (
-              <div className="modal">
-                <div className="modal-content add-members-modal-content">
-                  <h5 className="add-members-title">Add Members</h5>
-                  <ul className="add-members-list">
-                    {users
-                      .filter(u => !groupMembers.some(m => m._id === u._id))
-                      .map(user => (
-                        <li key={user._id} className="add-member-item">
-                          <label className="add-member-label">
-                            <input
-                              type="checkbox"
-                              value={user._id}
-                              checked={selectedMembers.includes(user._id)}
-                              onChange={e => {
-                                if (e.target.checked) {
-                                  setSelectedMembers(prev => [...prev, user._id]);
-                                } else {
-                                  setSelectedMembers(prev => prev.filter(id => id !== user._id));
-                                }
-                              }}
-                              className="add-member-checkbox"
-                            />
-                            <div className="add-member-avatar">{user.username[0].toUpperCase()}</div>
-                            <span>{user.username}</span>
-                          </label>
                         </li>
                       ))}
-                  </ul>
-                  <div className="add-members-actions">
-                    <button className="add-members-confirm-btn" onClick={handleAddMembers}>Add</button>
-                    <button className="add-members-cancel-btn" onClick={() => setShowAddMembers(false)}>Cancel</button>
+                    </ul>
+                    <button className="add-members-btn" onClick={e => { e.stopPropagation(); setShowAddMembers(true); }}>Add Members</button>
+                    {(() => {
+                      const group = groups.find(g => g._id === selectedChat.id);
+                      const isCreator =
+                        group &&
+                        group.creator &&
+                        (
+                          (typeof group.creator === 'string' && group.creator === user?._id) ||
+                          (typeof group.creator === 'object' && group.creator._id === user?._id)
+                        );
+                      if (isCreator) {
+                        return (
+                          <button
+                            className="delete-group-btn"
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
+                                try {
+                                  await axios.delete(
+                                    `http://localhost:5000/api/groups/${selectedChat.id}`,
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                  );
+                                  setGroups(prev => prev.filter(g => g._id !== selectedChat.id));
+                                  setSelectedChat(null);
+                                  alert('Group deleted!');
+                                } catch (err) {
+                                  alert('Failed to delete group.');
+                                }
+                              }
+                            }}
+                          >
+                            Delete Group
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="chat-messages">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`chat-message ${msg.sender === user?._id ? 'sent' : 'received'}`}
-              onDoubleClick={() => {
-                // Only allow editing for text messages (not file attachments)
-                if (msg.sender === user?._id && !msg.fileAttachment) {
-                  startEditing(msg._id, msg.content);
-                }
-              }}
-            >
-              {editingMessageId === msg._id ? (
-                <form onSubmit={handleEditMessage} style={{ display: 'flex', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={editContent}
-                    onChange={e => setEditContent(e.target.value)}
-                    style={{ flex: 1, marginRight: 8 }}
-                  />
-                  <button type="submit">Save</button>
-                  <button type="button" onClick={() => setEditingMessageId(null)} style={{ marginLeft: 4 }}>
-                    Cancel
-                  </button>
-                </form>
-              ) : (
-                <>
-                  {msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
-                    <div className="image-attachment">
-                      <img
-                        src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                        alt={msg.fileAttachment.originalName}
-                        style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
-                        onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
-                      />
+              )}
+              {showAddMembers && (
+                <div className="modal">
+                  <div className="modal-content add-members-modal-content">
+                    <h5 className="add-members-title">Add Members</h5>
+                    <ul className="add-members-list">
+                      {users
+                        .filter(u => !groupMembers.some(m => m._id === u._id))
+                        .map(user => (
+                          <li key={user._id} className="add-member-item">
+                            <label className="add-member-label">
+                              <input
+                                type="checkbox"
+                                value={user._id}
+                                checked={selectedMembers.includes(user._id)}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setSelectedMembers(prev => [...prev, user._id]);
+                                  } else {
+                                    setSelectedMembers(prev => prev.filter(id => id !== user._id));
+                                  }
+                                }}
+                                className="add-member-checkbox"
+                              />
+                              <div className="add-member-avatar">{user.username[0].toUpperCase()}</div>
+                              <span>{user.username}</span>
+                            </label>
+                          </li>
+                        ))}
+                    </ul>
+                    <div className="add-members-actions">
+                      <button className="add-members-confirm-btn" onClick={handleAddMembers}>Add</button>
+                      <button className="add-members-cancel-btn" onClick={() => setShowAddMembers(false)}>Cancel</button>
                     </div>
-                  ) : msg.fileAttachment ? (
-                    <div className="file-attachment-info">
-                      <div className="file-icon">📎</div>
-                      <div className="file-details">
-                        <div className="file-name">{msg.fileAttachment.originalName}</div>
-                        <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
-                      </div>
-                      <a
-                        href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                        download={msg.fileAttachment.originalName}
-                        className="download-btn"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  ) : null}
-                  {msg.content && <div className="file-message-text">{msg.content}</div>}
-                  {msg.sender === user?._id && (
-                    <button
-                      onClick={() => handleDeleteMessage(msg._id)}
-                      style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </>
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-        {/* Image Modal */}
-        {modalImage && (
-          <div className="image-modal-overlay" onClick={() => setModalImage(null)}>
-            <div className="image-modal-content" onClick={e => e.stopPropagation()}>
-              <img src={modalImage} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px' }} />
-              <button className="image-modal-close" onClick={() => setModalImage(null)} style={{ marginTop: 8 }}>Close</button>
+          )}
+          <div className="chat-messages">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`chat-message ${msg.sender === user?._id ? 'sent' : 'received'}`}
+                onDoubleClick={() => {
+                  // Only allow editing for text messages (not file attachments)
+                  if (msg.sender === user?._id && !msg.fileAttachment) {
+                    startEditing(msg._id, msg.content);
+                  }
+                }}
+              >
+                {editingMessageId === msg._id ? (
+                  <form onSubmit={handleEditMessage} style={{ display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={editContent}
+                      onChange={e => setEditContent(e.target.value)}
+                      style={{ flex: 1, marginRight: 8 }}
+                    />
+                    <button type="submit">Save</button>
+                    <button type="button" onClick={() => setEditingMessageId(null)} style={{ marginLeft: 4 }}>
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    {msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
+                      <div className="image-attachment">
+                        <img
+                          src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                          alt={msg.fileAttachment.originalName}
+                          style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
+                          onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
+                        />
+                      </div>
+                    ) : msg.fileAttachment ? (
+                      <div className="file-attachment-info">
+                        <div className="file-icon">📎</div>
+                        <div className="file-details">
+                          <div className="file-name">{msg.fileAttachment.originalName}</div>
+                          <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
+                        </div>
+                        <a
+                          href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                          download={msg.fileAttachment.originalName}
+                          className="download-btn"
+                        >
+                          Download
+                        </a>
+                      </div>
+                    ) : null}
+                    {msg.content && <div className="file-message-text">{msg.content}</div>}
+                    {msg.sender === user?._id && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg._id)}
+                        style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+          {/* Image Modal */}
+          {modalImage && (
+            <div className="image-modal-overlay" onClick={() => setModalImage(null)}>
+              <div className="image-modal-content" onClick={e => e.stopPropagation()}>
+                <img src={modalImage} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: '12px' }} />
+                <button className="image-modal-close" onClick={() => setModalImage(null)} style={{ marginTop: 8 }}>Close</button>
+              </div>
+            </div>
+          )}
+          <form className="chat-input" onSubmit={handleSend}>
+            <div className="input-container">
+              <button
+                type="button"
+                className="upload-btn"
+                onClick={openFileUpload}
+                disabled={!selectedChat || uploadingFile}
+                title="Upload file"
+              >
+                {uploadingFile ? '⏳' : '+'}
+              </button>
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={
+                  !input.trim() ||
+                  !selectedChat ||
+                  !socket ||
+                  !user ||
+                  !user._id
+                }
+              >
+                Send
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx"
+            />
+          </form>
+        </main>
+        {showCreateGroup && (
+          <div className="modal">
+            <div className="modal-content">
+              <h5>Create New Group</h5>
+              <input
+                type="text"
+                placeholder="Group name"
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+              />
+              <ul>
+                {users.map(user => (
+                  <li key={user._id}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        value={user._id}
+                        checked={newGroupMembers.includes(user._id)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setNewGroupMembers(prev => [...prev, user._id]);
+                          } else {
+                            setNewGroupMembers(prev => prev.filter(id => id !== user._id));
+                          }
+                        }}
+                      />
+                      {user.username}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={handleCreateGroup}>Create</button>
+              <button onClick={() => setShowCreateGroup(false)}>Cancel</button>
             </div>
           </div>
         )}
-        <form className="chat-input" onSubmit={handleSend}>
-          <div className="input-container">
-            <button
-              type="button"
-              className="upload-btn"
-              onClick={openFileUpload}
-              disabled={!selectedChat || uploadingFile}
-              title="Upload file"
-            >
-              {uploadingFile ? '⏳' : '+'}
-            </button>
-            <input
-              type="text"
-              placeholder="Type a message..."
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={
-                !input.trim() ||
-                !selectedChat ||
-                !socket ||
-                !user ||
-                !user._id
-              }
-            >
-              Send
-            </button>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            style={{ display: 'none' }}
-            accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx"
-          />
-        </form>
-      </main>
-      {showCreateGroup && (
-        <div className="modal">
-          <div className="modal-content">
-            <h5>Create New Group</h5>
-            <input
-              type="text"
-              placeholder="Group name"
-              value={newGroupName}
-              onChange={e => setNewGroupName(e.target.value)}
-            />
-            <ul>
-              {users.map(user => (
-                <li key={user._id}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      value={user._id}
-                      checked={newGroupMembers.includes(user._id)}
-                      onChange={e => {
-                        if (e.target.checked) {
-                          setNewGroupMembers(prev => [...prev, user._id]);
-                        } else {
-                          setNewGroupMembers(prev => prev.filter(id => id !== user._id));
-                        }
-                      }}
-                    />
-                    {user.username}
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <button onClick={handleCreateGroup}>Create</button>
-            <button onClick={() => setShowCreateGroup(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 };
 
