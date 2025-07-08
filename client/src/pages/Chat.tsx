@@ -562,7 +562,7 @@ const Chat = () => {
 
 
 
-        
+
         {/* Chat Main */}
         <main className="chat-main" style={window.innerWidth <= 768 && mobileView !== 'chat' ? { display: 'none' } : {}}>
           <div className="chat-header">
@@ -589,6 +589,16 @@ const Chat = () => {
                   ☰
                 </button>
               </div>
+
+
+
+
+
+
+
+
+
+
               {showMembersMenu && !showAddMembers && (
                 <div className="group-members-modal-overlay" onClick={() => setShowMembersMenu(false)}>
                   <div className="group-members-modal" onClick={e => e.stopPropagation()}>
@@ -701,6 +711,12 @@ const Chat = () => {
                   </div>
                 </div>
               )}
+
+
+
+
+
+
               {showAddMembers && (
                 <div className="modal">
                   <div className="modal-content add-members-modal-content">
@@ -815,6 +831,11 @@ const Chat = () => {
             />
           </form>
         </main>
+
+
+
+
+
         {showCreateGroup && (
           <div className="modal">
             <div className="modal-content">
