@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/Chat.css';
 import React from 'react';
 import Navbar from '../components/Navbar';
+import EmojiPicker from '../components/EmojiPicker';
 
 type UserType = { _id: string; username: string };
 type GroupType = {
@@ -254,14 +255,19 @@ const Chat = () => {
 
   const handleDeleteMessage = async (id: string) => {
     if (!id) return;
+    // Optimistically remove from UI
+    setMessages(prev => prev.filter(msg => msg._id !== id));
     try {
       await axios.delete(
         `http://localhost:5000/api/messages/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchMessages();
+      // Optionally refetch messages here if you want to be sure
+      // fetchMessages();
     } catch (err) {
       alert('Failed to delete message.');
+      // Optionally re-add the message if deletion failed
+      fetchMessages();
     }
   };
 
@@ -392,6 +398,102 @@ const Chat = () => {
       return g ? g.name : '';
     }
   };
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleEmojiSelect = (emoji: string) => {
+    if (inputRef.current) {
+      const input = inputRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newValue =
+        input.value.substring(0, start) +
+        emoji +
+        input.value.substring(end);
+      setInput(newValue);
+      // Move cursor after emoji
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      setInput((prev) => prev + emoji);
+    }
+  };
+
+  // Helper to check if an ID is a real MongoDB ObjectId
+  const isRealMongoId = (id: string) => /^[a-f\d]{24}$/i.test(id);
+
+  // Memoized message item to prevent unnecessary re-renders
+  const MessageItem = React.memo(({ msg, userId, onDelete }: { msg: MessageType; userId: string; onDelete: (id: string) => void }) => (
+    <div
+      className={`chat-message ${msg.sender === userId ? 'sent' : 'received'}`}
+      onDoubleClick={() => {
+        // Only allow editing for text messages (not file attachments)
+        if (msg.sender === userId && !msg.fileAttachment) {
+          startEditing(msg._id, msg.content);
+        }
+      }}
+    >
+      {editingMessageId === msg._id ? (
+        <form onSubmit={handleEditMessage} style={{ display: 'flex', alignItems: 'center' }}>
+          <input
+            type="text"
+            value={editContent}
+            onChange={e => setEditContent(e.target.value)}
+            style={{ flex: 1, marginRight: 8 }}
+          />
+          <button type="submit">Save</button>
+          <button type="button" onClick={() => setEditingMessageId(null)} style={{ marginLeft: 4 }}>
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <>
+          {msg.fileAttachment && msg.fileAttachment.mimetype.startsWith('audio/') ? (
+            <audio controls style={{ marginTop: '10px', width: '100%' }}>
+              <source src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`} type={msg.fileAttachment.mimetype} />
+              Your browser does not support the audio element.
+            </audio>
+          ) : msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
+            <div className="image-attachment">
+              <img
+                src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                alt={msg.fileAttachment.originalName}
+                style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
+                onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
+              />
+            </div>
+          ) : msg.fileAttachment ? (
+            <div className="file-attachment-info">
+              <div className="file-icon">📎</div>
+              <div className="file-details">
+                <div className="file-name">{msg.fileAttachment.originalName}</div>
+                <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
+              </div>
+              <a
+                href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                download={msg.fileAttachment.originalName}
+                className="download-btn"
+              >
+                Download
+              </a>
+            </div>
+          ) : null}
+          {msg.content && <div className="file-message-text">{msg.content}</div>}
+          {msg.sender === userId && (
+            <button
+              onClick={() => onDelete(msg._id)}
+              style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Delete
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  ));
 
   return (
     <>
@@ -621,69 +723,13 @@ const Chat = () => {
             </div>
           )}
           <div className="chat-messages">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`chat-message ${msg.sender === user?._id ? 'sent' : 'received'}`}
-                onDoubleClick={() => {
-                  // Only allow editing for text messages (not file attachments)
-                  if (msg.sender === user?._id && !msg.fileAttachment) {
-                    startEditing(msg._id, msg.content);
-                  }
-                }}
-              >
-                {editingMessageId === msg._id ? (
-                  <form onSubmit={handleEditMessage} style={{ display: 'flex', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      value={editContent}
-                      onChange={e => setEditContent(e.target.value)}
-                      style={{ flex: 1, marginRight: 8 }}
-                    />
-                    <button type="submit">Save</button>
-                    <button type="button" onClick={() => setEditingMessageId(null)} style={{ marginLeft: 4 }}>
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    {msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
-                      <div className="image-attachment">
-                        <img
-                          src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                          alt={msg.fileAttachment.originalName}
-                          style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
-                          onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
-                        />
-                      </div>
-                    ) : msg.fileAttachment ? (
-                      <div className="file-attachment-info">
-                        <div className="file-icon">📎</div>
-                        <div className="file-details">
-                          <div className="file-name">{msg.fileAttachment.originalName}</div>
-                          <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
-                        </div>
-                        <a
-                          href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                          download={msg.fileAttachment.originalName}
-                          className="download-btn"
-                        >
-                          Download
-                        </a>
-                      </div>
-                    ) : null}
-                    {msg.content && <div className="file-message-text">{msg.content}</div>}
-                    {msg.sender === user?._id && (
-                      <button
-                        onClick={() => handleDeleteMessage(msg._id)}
-                        style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+            {messages.map((msg) => (
+              <MessageItem
+                key={msg._id}
+                msg={msg}
+                userId={user?._id || ''}
+                onDelete={handleDeleteMessage}
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>
@@ -700,6 +746,20 @@ const Chat = () => {
             <div className="input-container">
               <button
                 type="button"
+                className="emoji-btn"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                style={{ fontSize: 22, marginRight: 8 }}
+                tabIndex={-1}
+              >
+                😀
+              </button>
+              <EmojiPicker
+                visible={showEmojiPicker}
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+              <button
+                type="button"
                 className="upload-btn"
                 onClick={openFileUpload}
                 disabled={!selectedChat || uploadingFile}
@@ -708,6 +768,7 @@ const Chat = () => {
                 {uploadingFile ? '⏳' : '+'}
               </button>
               <input
+                ref={inputRef}
                 type="text"
                 placeholder="Type a message..."
                 value={input}
