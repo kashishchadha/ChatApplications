@@ -1012,3 +1012,19 @@
     box-shadow: 0 4px 12px rgba(0, 151, 167, 0.18);
   }
 }
+
+.emoji-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+  color: #222;
+}
+.emoji-btn:hover, .emoji-btn:focus {
+  background: #e3f7fa;
+  outline: none;
+}

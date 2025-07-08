@@ -59,6 +59,11 @@ io.on('connection', (socket) => {
     console.log(`User ${socket.id} joined group ${groupId}`);
   });
 
+  socket.on('joinUser', (userId) => {
+    socket.join(userId);
+    console.log(`User ${socket.id} joined their own room ${userId}`);
+  });
+
  
   socket.on('sendMessage', async (data) => {
     

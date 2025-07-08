@@ -16,7 +16,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       });
       s.on('connect', () => {
         console.log('Socket connected:', s.id);
-        s.emit('joinGroup', user._id);
+        s.emit('joinUser', user._id); // Join user room for direct messaging
+        s.emit('joinGroup', user._id); // (optional: if you want to keep group join for userId)
       });
       setSocket(s);
       return () => {

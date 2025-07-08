@@ -305,16 +305,18 @@ const Chat = () => {
       
       // Send message via socket only (no duplicate API call)
       if (socket) {
-        const optimisticMsg = {
-          _id: Math.random().toString(36).substr(2, 9),
-          content: `Sent: ${file.name}`,
-          sender: user!._id,
-          recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
-          group: selectedChat.type === 'group' ? selectedChat.id : undefined,
-          createdAt: new Date().toISOString(),
-          fileAttachment: fileInfo
-        } as MessageType;
-        setMessages(prev => [...prev, optimisticMsg]);
+        if (selectedChat.type === 'group') {
+          // Only optimistically add for group chats
+          const optimisticMsg = {
+            _id: Math.random().toString(36).substr(2, 9),
+            content: `Sent: ${file.name}`,
+            sender: user!._id,
+            group: selectedChat.id,
+            createdAt: new Date().toISOString(),
+            fileAttachment: fileInfo
+          } as MessageType;
+          setMessages(prev => [...prev, optimisticMsg]);
+        }
         socket.emit('sendMessage', {
           content: `Sent: ${file.name}`,
           sender: user!._id,
@@ -322,6 +324,10 @@ const Chat = () => {
           group: selectedChat.type === 'group' ? selectedChat.id : undefined,
           fileAttachment: fileInfo
         });
+        // For direct messages, refetch messages after upload to ensure visibility
+        if (selectedChat.type === 'user') {
+          fetchMessages();
+        }
       }
 
       setShowFileUpload(false);
