@@ -72,11 +72,26 @@ io.on('connection', (socket) => {
         sender: msg.sender,
         content: msg.content,
         group: msg.group,
-        createdAt: new Date()
+        createdAt: new Date(),
+        fileAttachment: msg.fileAttachment || undefined
       });
       // Populate sender's username
       const populatedMsg = await newMsg.populate('sender', 'username');
       io.to(msg.group).emit('receiveMessage', populatedMsg);
+    } else if (msg.recipient) {
+      // Save the message to DB
+      const newMsg = await Message.create({
+        sender: msg.sender,
+        recipient: msg.recipient,
+        content: msg.content,
+        createdAt: new Date(),
+        fileAttachment: msg.fileAttachment || undefined
+      });
+      // Populate sender and recipient usernames (Mongoose 7+)
+      let populatedMsg = await newMsg.populate('sender', 'username');
+      populatedMsg = await populatedMsg.populate('recipient', 'username');
+      // Emit to both sender and recipient rooms
+      io.to(msg.recipient).to(msg.sender).emit('receiveMessage', populatedMsg);
     }
   });
 

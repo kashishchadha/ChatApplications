@@ -321,7 +321,6 @@ const Chat = () => {
     };
     console.log('Emitting sendMessage:', outgoing);
 
-    // Optimistically add for both user and group chats
     const newMsg: MessageType = {
       _id: Math.random().toString(36).substr(2, 9),
       ...outgoing,
@@ -331,9 +330,8 @@ const Chat = () => {
         ? { _id: selectedChat.id, username: users.find(u => u._id === selectedChat.id)?.username }
         : undefined,
     };
-    setMessages(prev => [...prev, newMsg]);
-
     if (selectedChat.type === 'user') {
+      setMessages(prev => [...prev, newMsg]); // Optimistic update ONLY for user-to-user
       socket.emit('sendMessage', {
         content: input,
         sender: user._id,
@@ -463,35 +461,31 @@ const Chat = () => {
       );
 
       const fileInfo = uploadResponse.data.file;
-      
-      // Send message via socket only (no duplicate API call)
-      if (socket) {
-        if (selectedChat.type === 'group') {
-          // Only optimistically add for group chats
-          const optimisticMsg = {
-            _id: Math.random().toString(36).substr(2, 9),
-            content: `Sent: ${file.name}`,
-            sender: user!._id,
-            group: selectedChat.id,
-            createdAt: new Date().toISOString(),
-            fileAttachment: fileInfo
-          } as MessageType;
-          setMessages(prev => [...prev, optimisticMsg]);
-        }
-        socket.emit('sendMessage', {
-          content: `Sent: ${file.name}`,
-          sender: user!._id,
-          recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
-          group: selectedChat.type === 'group' ? selectedChat.id : undefined,
-          fileAttachment: fileInfo
-        });
-        // For direct messages, refetch messages after upload to ensure visibility
-        if (selectedChat.type === 'user') {
-          fetchMessages();
-        }
+
+      const outgoing = {
+        content: `Sent: ${file.name}`,
+        sender: user!._id,
+        recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
+        group: selectedChat.type === 'group' ? selectedChat.id : undefined,
+        fileAttachment: fileInfo
+      };
+
+      if (selectedChat.type === 'user') {
+        // Optimistically add for user-to-user
+        const newMsg: MessageType = {
+          _id: Math.random().toString(36).substr(2, 9),
+          ...outgoing,
+          createdAt: new Date().toISOString(),
+          sender: { _id: user!._id, username: user!.username },
+          recipient: { _id: selectedChat.id, username: users.find(u => u._id === selectedChat.id)?.username }
+        };
+        setMessages(prev => [...prev, newMsg]);
       }
 
+      socket?.emit('sendMessage', outgoing);
+
       setShowFileUpload(false);
+      setInput('');
     } catch (error) {
       console.error('Upload error:', error);
       alert('Failed to upload file.');
