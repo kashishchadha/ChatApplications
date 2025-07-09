@@ -5,8 +5,8 @@ import Chat from './pages/Chat';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/Navbar';
+import ProtectedRoute from './context/ProtectedRoute';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 function App() {
   return (
