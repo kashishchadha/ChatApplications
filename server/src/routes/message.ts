@@ -7,7 +7,7 @@ const router = Router();
 // Get messages for a group
 router.get('/group/:groupId', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const messages = await Message.find({ group: req.params.groupId }).sort({ createdAt: 1 });
+    const messages = await Message.find({ group: req.params.groupId }).sort({ createdAt: 1 }).populate('sender','username');
     res.json(messages);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching group messages', error: err });
@@ -62,7 +62,10 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
         { sender: myId, recipient: otherId },
         { sender: otherId, recipient: myId }
       ]
-    }).sort({ createdAt: 1 });
+    })
+      .sort({ createdAt: 1 })
+      .populate('sender', 'username')
+      .populate('recipient', 'username');
     res.json(messages);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching messages', error: err });

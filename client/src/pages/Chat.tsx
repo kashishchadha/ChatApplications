@@ -106,21 +106,178 @@ const Chat = () => {
       }).then(res => setGroupMembers(res.data));
     }
     axios.get(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setMessages(res.data));
+      .then(res => {
+        if (selectedChat.type === 'user') {
+          console.log('Fetched user-to-user messages:', res.data);
+        }
+        setMessages(res.data);
+      });
   }, [selectedChat, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleEmojiSelect = (emoji: string) => {
+    if (inputRef.current) {
+      const input = inputRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newValue =
+        input.value.substring(0, start) +
+        emoji +
+        input.value.substring(end);
+      setInput(newValue);
+      // Move cursor after emoji
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      setInput((prev) => prev + emoji);
+    }
+  };
+
+  // Robust helpers for sender/recipient IDs
+  const getSenderId = (sender: string | { _id: string } | undefined) =>
+    sender && typeof sender === 'object' && sender !== null ? (sender as any)._id : sender || '';
+  const getRecipientId = (recipient: string | { _id: string } | undefined) =>
+    recipient && typeof recipient === 'object' && recipient !== null ? (recipient as any)._id : recipient || '';
+
+  // Memoized message item to prevent unnecessary re-renders
+  const MessageItem = React.memo(({ msg, userId, onDelete, onEdit }: { msg: MessageType; userId: string; onDelete: (id: string) => void; onEdit: (id: string, newContent: string) => Promise<boolean>; }) => {
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editContent, setEditContent] = React.useState(msg.content);
+    React.useEffect(() => {
+      setEditContent(msg.content);
+    }, [msg.content]);
+
+    // Determine if this message is sent by the logged-in user
+    const isSentByMe = getSenderId(msg.sender) === userId;
+
+    return (
+      <div
+        className={`chat-message ${isSentByMe ? 'sent' : 'received'}`}
+        onDoubleClick={() => {
+          if (isSentByMe && !msg.fileAttachment) setIsEditing(true);
+        }}
+      >
+        {isEditing ? (
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!editContent.trim()) return;
+            const success = await onEdit(msg._id, editContent);
+            if (success) setIsEditing(false);
+          }} style={{ display: 'flex', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={editContent}
+              onChange={e => setEditContent(e.target.value)}
+              style={{ flex: 1, marginRight: 8 }}
+              autoFocus
+            />
+            <button type="submit">Save</button>
+            <button type="button" onClick={() => setIsEditing(false)} style={{ marginLeft: 4 }}>
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <>
+            {msg.fileAttachment && msg.fileAttachment.mimetype.startsWith('audio/') ? (
+              <audio controls style={{ marginTop: '10px', width: '100%' }}>
+                <source src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`} type={msg.fileAttachment.mimetype} />
+                Your browser does not support the audio element.
+              </audio>
+            ) : msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
+              <div className="image-attachment">
+                <img
+                  src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                  alt={msg.fileAttachment.originalName}
+                  style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
+                  onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
+                />
+              </div>
+            ) : msg.fileAttachment ? (
+              <div className="file-attachment-info">
+                <div className="file-icon">📎</div>
+                <div className="file-details">
+                  <div className="file-name">{msg.fileAttachment.originalName}</div>
+                  <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
+                </div>
+                <a
+                  href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
+                  download={msg.fileAttachment.originalName}
+                  className="download-btn"
+                >
+                  Download
+                </a>
+              </div>
+            ) : null}
+
+            {/* Only show sender name for group messages from others */}
+            {selectedChat?.type === 'group' && !isSentByMe && typeof msg.sender === 'object' && (msg.sender as any).username && (
+              <div className="sender-name" style={{ fontWeight: 'bold', fontSize: '0.9em' }}>
+                {(msg.sender as any).username}
+              </div>
+            )}
+
+            {msg.content && <div className="file-message-text">{msg.content}</div>}
+            {isSentByMe && (
+              <button
+                onClick={() => onDelete(msg._id)}
+                style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                Delete
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  });
+
+  const fetchMessages = useCallback(() => {
+    if (!selectedChat || !token) return;
+    let url = '';
+    if (selectedChat.type === 'user') {
+      url = `http://localhost:5000/api/messages/user/${selectedChat.id}`;
+    } else {
+      url = `http://localhost:5000/api/messages/group/${selectedChat.id}`;
+    }
+    axios
+      .get(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setMessages(res.data));
+  }, [selectedChat, token]);
+
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
   // Listen for incoming messages
   useEffect(() => {
     if (!socket) return;
     const handleReceive = (msg: MessageType) => {
+      console.log('Received message:', msg, 'SelectedChat:', selectedChat, 'User:', user);
+      // Always extract IDs as strings
+      const myId = user?._id || '';
+      const selectedId = selectedChat?.id || '';
+      const senderId = getSenderId(msg.sender);
+      const recipientId = getRecipientId(msg.recipient);
       if (
-        (selectedChat?.type === 'user' && ((msg.recipient === selectedChat.id && msg.sender === user?._id) || (msg.sender === selectedChat.id && msg.recipient === user?._id))) ||
-        (selectedChat?.type === 'group' && msg.group === selectedChat.id)
+        selectedChat?.type === 'user' &&
+        (
+          (senderId === myId && recipientId === selectedId) ||
+          (senderId === selectedId && recipientId === myId)
+        )
       ) {
+        setMessages(prev => [...prev, msg]);
+        // Fallback: refetch messages to ensure UI is up to date
+        fetchMessages();
+      }
+      if (selectedChat?.type === 'group' && msg.group === selectedChat.id) {
         setMessages(prev => [...prev, msg]);
       }
     };
@@ -128,8 +285,18 @@ const Chat = () => {
     return () => {
       socket.off('receiveMessage', handleReceive);
     };
-  }, [socket, selectedChat, user?._id]);
+  }, [socket, selectedChat, user?._id, fetchMessages]);
 
+  // Join group room when a group chat is selected
+  useEffect(() => {
+    if (socket && selectedChat?.type === 'group') {
+      socket.emit('joinGroup', selectedChat.id);
+    }
+  }, [socket, selectedChat]);
+
+
+
+  
   // Send message
   const handleSend = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -154,15 +321,17 @@ const Chat = () => {
     };
     console.log('Emitting sendMessage:', outgoing);
 
-    if (selectedChat.type === 'group') {
-      // Only optimistically add for group chats (optional)
-      const newMsg = {
-        _id: Math.random().toString(36).substr(2, 9),
-        ...outgoing,
-        createdAt: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, newMsg]);
-    }
+    // Optimistically add for both user and group chats
+    const newMsg = {
+      _id: Math.random().toString(36).substr(2, 9),
+      ...outgoing,
+      createdAt: new Date().toISOString(),
+      sender: { _id: user._id, username: user.username },
+      recipient: selectedChat.type === 'user'
+        ? users.find(u => u._id === selectedChat.id)
+        : undefined,
+    };
+    setMessages(prev => [...prev, newMsg]);
 
     if (selectedChat.type === 'user') {
       socket.emit('sendMessage', {
@@ -178,7 +347,7 @@ const Chat = () => {
       });
     }
     setInput('');
-  }, [input, selectedChat, socket, user]);
+  }, [input, selectedChat, socket, user, users]);
 
   
   // Placeholder for group creation
@@ -347,45 +516,7 @@ const Chat = () => {
     return mimetype.startsWith('image/');
   };
 
-  const fetchMessages = useCallback(() => {
-    if (!selectedChat || !token) return;
-    let url = '';
-    if (selectedChat.type === 'user') {
-      url = `http://localhost:5000/api/messages/user/${selectedChat.id}`;
-    } else {
-      url = `http://localhost:5000/api/messages/group/${selectedChat.id}`;
-    }
-    axios
-      .get(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setMessages(res.data));
-  }, [selectedChat, token]);
-
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  // Remove member from group
-  const handleRemoveMember = async (memberId: string) => {
-    if (!selectedChat || selectedChat.type !== 'group') return;
-    try {
-      console.log('Removing member', memberId, 'from group', selectedChat.id);
-      await axios.post(
-        `http://localhost:5000/api/groups/${selectedChat.id}/remove-member`,
-        { memberId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Refresh group members
-      axios.get(`http://localhost:5000/api/groups/${selectedChat.id}/members`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setGroupMembers(res.data));
-    } catch (err: any) {
-      // Show backend error message if available
-      const msg = err?.response?.data?.message || err.message || 'Failed to remove member.';
-      alert(msg);
-      console.error('Remove member error:', err?.response?.data || err);
-    }
-  };
-
+  // Add getChatTitle helper
   const getChatTitle = () => {
     if (!selectedChat) return '';
     if (selectedChat.type === 'user') {
@@ -397,114 +528,24 @@ const Chat = () => {
     }
   };
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleEmojiSelect = (emoji: string) => {
-    if (inputRef.current) {
-      const input = inputRef.current;
-      const start = input.selectionStart || 0;
-      const end = input.selectionEnd || 0;
-      const newValue =
-        input.value.substring(0, start) +
-        emoji +
-        input.value.substring(end);
-      setInput(newValue);
-      // Move cursor after emoji
-      setTimeout(() => {
-        input.focus();
-        input.setSelectionRange(start + emoji.length, start + emoji.length);
-      }, 0);
-    } else {
-      setInput((prev) => prev + emoji);
+  // Add handleRemoveMember helper
+  const handleRemoveMember = async (memberId: string) => {
+    if (!selectedChat || selectedChat.type !== 'group') return;
+    try {
+      await axios.post(
+        `http://localhost:5000/api/groups/${selectedChat.id}/remove-member`,
+        { memberId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Refresh group members
+      axios.get(`http://localhost:5000/api/groups/${selectedChat.id}/members`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setGroupMembers(res.data));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err.message || 'Failed to remove member.';
+      alert(msg);
     }
   };
-
-  // Helper to check if an ID is a real MongoDB ObjectId
-  const isRealMongoId = (id: string) => /^[a-f\d]{24}$/i.test(id);
-
-  // Memoized message item to prevent unnecessary re-renders
-  const MessageItem = React.memo(({ msg, userId, onDelete, onEdit }: { msg: MessageType; userId: string; onDelete: (id: string) => void; onEdit: (id: string, newContent: string) => Promise<boolean>; }) => {
-    const [isEditing, setIsEditing] = React.useState(false);
-    const [editContent, setEditContent] = React.useState(msg.content);
-    React.useEffect(() => {
-      setEditContent(msg.content);
-    }, [msg.content]);
-    const handleSave = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!editContent.trim()) return;
-      const success = await onEdit(msg._id, editContent);
-      if (success) setIsEditing(false);
-    };
-    return (
-      <div
-        className={`chat-message ${msg.sender === userId ? 'sent' : 'received'}`}
-        onDoubleClick={() => {
-          if (msg.sender === userId && !msg.fileAttachment) {
-            setIsEditing(true);
-          }
-        }}
-      >
-        {isEditing ? (
-          <form onSubmit={handleSave} style={{ display: 'flex', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={editContent}
-              onChange={e => setEditContent(e.target.value)}
-              style={{ flex: 1, marginRight: 8 }}
-              autoFocus
-            />
-            <button type="submit">Save</button>
-            <button type="button" onClick={() => setIsEditing(false)} style={{ marginLeft: 4 }}>
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <>
-            {msg.fileAttachment && msg.fileAttachment.mimetype.startsWith('audio/') ? (
-              <audio controls style={{ marginTop: '10px', width: '100%' }}>
-                <source src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`} type={msg.fileAttachment.mimetype} />
-                Your browser does not support the audio element.
-              </audio>
-            ) : msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
-              <div className="image-attachment">
-                <img
-                  src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                  alt={msg.fileAttachment.originalName}
-                  style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
-                  onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
-                />
-              </div>
-            ) : msg.fileAttachment ? (
-              <div className="file-attachment-info">
-                <div className="file-icon">📎</div>
-                <div className="file-details">
-                  <div className="file-name">{msg.fileAttachment.originalName}</div>
-                  <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
-                </div>
-                <a
-                  href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                  download={msg.fileAttachment.originalName}
-                  className="download-btn"
-                >
-                  Download
-                </a>
-              </div>
-            ) : null}
-            {msg.content && <div className="file-message-text">{msg.content}</div>}
-            {msg.sender === userId && (
-              <button
-                onClick={() => onDelete(msg._id)}
-                style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                Delete
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    );
-  });
 
   return (
     <>

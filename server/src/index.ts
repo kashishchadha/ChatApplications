@@ -65,27 +65,18 @@ io.on('connection', (socket) => {
   });
 
  
-  socket.on('sendMessage', async (data) => {
-    
-    const { sender, content, group, recipient, fileAttachment } = data;
-    try {
-      const messageData: any = { sender, content, group, recipient };
-      if (fileAttachment) {
-        messageData.fileAttachment = fileAttachment;
-      }
-      
-      const message = await Message.create(messageData);
-      
-      // Emit to all relevant users
-      if (group) {
-        io.to(group).emit('receiveMessage', message);
-      } else if (recipient) {
-        // For 1-to-1, emit to both sender and recipient
-        io.to(sender).emit('receiveMessage', message);
-        io.to(recipient).emit('receiveMessage', message);
-      }
-    } catch (err) {
-      console.error('Error saving message:', err);
+  socket.on('sendMessage', async (msg) => {
+    if (msg.group) {
+      // Save the message to DB
+      const newMsg = await Message.create({
+        sender: msg.sender,
+        content: msg.content,
+        group: msg.group,
+        createdAt: new Date()
+      });
+      // Populate sender's username
+      const populatedMsg = await newMsg.populate('sender', 'username');
+      io.to(msg.group).emit('receiveMessage', populatedMsg);
     }
   });
 
