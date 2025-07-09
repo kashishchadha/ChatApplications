@@ -17,8 +17,8 @@ type GroupType = {
 type MessageType = {
   _id: string;
   content: string;
-  sender: string;
-  recipient?: string;
+  sender: string | { _id: string; username?: string };
+  recipient?: string | { _id: string; username?: string };
   group?: string;
   createdAt: string;
   fileAttachment?: {
@@ -322,13 +322,13 @@ const Chat = () => {
     console.log('Emitting sendMessage:', outgoing);
 
     // Optimistically add for both user and group chats
-    const newMsg = {
+    const newMsg: MessageType = {
       _id: Math.random().toString(36).substr(2, 9),
       ...outgoing,
       createdAt: new Date().toISOString(),
       sender: { _id: user._id, username: user.username },
       recipient: selectedChat.type === 'user'
-        ? users.find(u => u._id === selectedChat.id)
+        ? { _id: selectedChat.id, username: users.find(u => u._id === selectedChat.id)?.username }
         : undefined,
     };
     setMessages(prev => [...prev, newMsg]);
