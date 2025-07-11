@@ -75,7 +75,7 @@ router.get('/user/:userId', authMiddleware, async (req, res) => {
 // Create a message with optional file attachment
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { content, recipient, group, fileAttachment } = req.body;
+    const { content, recipient, group, fileAttachment, forwarded } = req.body;
     // @ts-ignore
     const sender = req.userId;
 
@@ -88,6 +88,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     if (recipient) messageData.recipient = recipient;
     if (group) messageData.group = group;
     if (fileAttachment) messageData.fileAttachment = fileAttachment;
+    if (typeof forwarded !== 'undefined') messageData.forwarded = forwarded; // <-- Added
 
     const message = new Message(messageData);
     await message.save();

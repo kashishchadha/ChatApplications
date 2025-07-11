@@ -13,6 +13,7 @@ export interface IMessage extends Document {
     size: number;
     path: string;
   };
+  forwarded?: boolean;
 }
 
 const MessageSchema: Schema = new Schema({
@@ -27,7 +28,8 @@ const MessageSchema: Schema = new Schema({
     mimetype: { type: String },
     size: { type: Number },
     path: { type: String }
-  }
+  },
+  forwarded: { type: Boolean, default: false }
 });
 
 export default mongoose.model<IMessage>('Message', MessageSchema);

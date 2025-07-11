@@ -73,7 +73,8 @@ io.on('connection', (socket) => {
         content: msg.content,
         group: msg.group,
         createdAt: new Date(),
-        fileAttachment: msg.fileAttachment || undefined
+        fileAttachment: msg.fileAttachment || undefined,
+        forwarded: msg.forwarded || false
       });
       // Populate sender's username
       const populatedMsg = await newMsg.populate('sender', 'username');
@@ -85,7 +86,8 @@ io.on('connection', (socket) => {
         recipient: msg.recipient,
         content: msg.content,
         createdAt: new Date(),
-        fileAttachment: msg.fileAttachment || undefined
+        fileAttachment: msg.fileAttachment || undefined,
+        forwarded: msg.forwarded || false
       });
       // Populate sender and recipient usernames (Mongoose 7+)
       let populatedMsg = await newMsg.populate('sender', 'username');

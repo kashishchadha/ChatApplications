@@ -279,6 +279,10 @@
   min-width: 320px;
   max-width: 90vw;
   box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 188, 212, 0.12);
+  border: none;
+  padding-top: 0;
 }
 
 @media (max-width: 480px) {
@@ -290,8 +294,15 @@
 }
 
 .modal-content h5 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  background: #00bcd4;
+  color: #fff;
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 @media (max-width: 480px) {
@@ -322,6 +333,8 @@
   max-height: 150px;
   overflow-y: auto;
   margin-bottom: 1rem;
+  padding: 1rem 0.5rem 0.5rem 0.5rem;
+  margin: 0;
 }
 
 @media (max-width: 480px) {
@@ -342,14 +355,16 @@
 }
 
 .modal-content button {
-  margin-right: 0.5rem;
-  padding: 0.5rem 1.2rem;
-  border-radius: 6px;
-  border: none;
   background: #00bcd4;
   color: #fff;
-  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  padding: 0.3rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
+  margin-bottom: 0.3rem;
+  width: 100%;
   transition: background 0.2s;
 }
 
@@ -363,6 +378,10 @@
 .modal-content button:last-child {
   background: #eee;
   color: #222;
+}
+
+.modal-content button:hover {
+  background: #0097a7;
 }
 
 .modal-content button:hover:not(:last-child) {
@@ -1038,4 +1057,126 @@
 .emoji-btn:hover, .emoji-btn:focus {
   background: #e3f7fa;
   outline: none;
+}
+
+.forwarded-tag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 7rem;
+  color: #0b0b0b;
+  background: #e0f7fa;
+  border: 1px solid #b2ebf2;
+  border-radius: 6px;
+  padding: 1px 7px;
+  z-index: 1;
+  width: fit-content;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 188, 212, 0.08);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+}
+.chat-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #222;
+}
+.select-messages-btn {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0.18rem 0.7rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  height: 28px;
+  line-height: 1.1;
+  transition: background 0.2s;
+}
+.select-messages-btn:hover {
+  background: #0097a7;
+}
+
+.chat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.forward-btn {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 0.18rem 0.7rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin: 10px 0 10px 0;
+  height: 28px;
+  width: 100%;
+  line-height: 1.1;
+  transition: background 0.2s;
+}
+.forward-btn:hover {
+  background: #0097a7;
+}
+
+.modal-content.forward-modal {
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0, 188, 212, 0.18);
+  border: none;
+  padding: 0 0 1.2rem 0;
+  min-width: 320px;
+  max-width: 95vw;
+  background: #fff;
+}
+.modal-content.forward-modal h5 {
+  background: #00bcd4;
+  color: #fff;
+  margin: 0;
+  padding: 1.1rem 1.5rem;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 188, 212, 0.08);
+}
+.forward-modal ul {
+  padding: 1.2rem 1.5rem 0.5rem 1.5rem;
+  margin: 0;
+}
+.forward-modal li {
+  margin-bottom: 0.7rem;
+  list-style: none;
+}
+.forward-modal button {
+  background: #00bcd4;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.4rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 0.3rem;
+  width: 100%;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 188, 212, 0.10);
+}
+.forward-modal button:hover {
+  background: #0097a7;
 }

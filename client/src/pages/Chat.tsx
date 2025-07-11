@@ -28,6 +28,7 @@ type MessageType = {
     size: number;
     path: string;
   };
+  forwarded?: boolean; // <-- Add this line
 };
 
 const Chat = () => {
@@ -148,7 +149,25 @@ const Chat = () => {
     recipient && typeof recipient === 'object' && recipient !== null ? (recipient as any)._id : recipient || '';
 
   // Memoized message item to prevent unnecessary re-renders
-  const MessageItem = React.memo(({ msg, userId, onDelete, onEdit }: { msg: MessageType; userId: string; onDelete: (id: string) => void; onEdit: (id: string, newContent: string) => Promise<boolean>; }) => {
+  const MessageItem = React.memo((
+    {
+      msg,
+      userId,
+      onDelete,
+      onEdit,
+      selectMode,
+      selectedMessageIds,
+      setSelectedMessageIds
+    }: {
+      msg: MessageType;
+      userId: string;
+      onDelete: (id: string) => void;
+      onEdit: (id: string, newContent: string) => Promise<boolean>;
+      selectMode: boolean;
+      selectedMessageIds: string[];
+      setSelectedMessageIds: React.Dispatch<React.SetStateAction<string[]>>;
+    }
+  ) => {
     const [isEditing, setIsEditing] = React.useState(false);
     const [editContent, setEditContent] = React.useState(msg.content);
     React.useEffect(() => {
@@ -161,10 +180,28 @@ const Chat = () => {
     return (
       <div
         className={`chat-message ${isSentByMe ? 'sent' : 'received'}`}
+        style={{ position: 'relative' }}
         onDoubleClick={() => {
-          if (isSentByMe && !msg.fileAttachment) setIsEditing(true);
+          if (!selectMode && isSentByMe && !msg.fileAttachment) setIsEditing(true);
         }}
       >
+        {selectMode && (
+          <input
+            type="checkbox"
+            checked={selectedMessageIds.includes(msg._id)}
+            onChange={() => {
+              if (selectedMessageIds.includes(msg._id)) {
+                setSelectedMessageIds(selectedMessageIds.filter(id => id !== msg._id));
+              } else {
+                setSelectedMessageIds([...selectedMessageIds, msg._id]);
+              }
+            }}
+            style={{ marginRight: 8 }}
+          />
+        )}
+        {(msg as any).forwarded && (
+          <div className="forwarded-tag">Forwarded</div>
+        )}
         {isEditing ? (
           <form onSubmit={async (e) => {
             e.preventDefault();
@@ -541,6 +578,37 @@ const Chat = () => {
     }
   };
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+
+  const handleForward = async (type: 'user' | 'group', id: string) => {
+    // Find the selected messages
+    const messagesToForward = messages.filter(msg => selectedMessageIds.includes(msg._id));
+    for (const msg of messagesToForward) {
+      // Prepare the outgoing message
+      const outgoing: any = {
+        content: msg.content,
+        sender: user!._id,
+        recipient: type === 'user' ? id : undefined,
+        group: type === 'group' ? id : undefined,
+        forwarded: true, // <--- This marks the message as forwarded
+      };
+      if (msg.fileAttachment) {
+        outgoing.fileAttachment = msg.fileAttachment;
+      }
+      // Send via socket
+      socket?.emit('sendMessage', outgoing);
+    }
+    setShowForwardModal(false);
+    setSelectMode(false);
+    setSelectedMessageIds([]);
+
+    // Redirect to the destination chat after forwarding
+    setSelectedChat({ type, id });
+    if (window.innerWidth <= 768) setMobileView('chat');
+  };
+
   return (
     <>
       {/* Show Navbar only on desktop, or on mobile when sidebar is visible */}
@@ -610,12 +678,46 @@ const Chat = () => {
                 ← Back
               </button>
             )}
-            {selectedChat?.type !== 'group' && <h2>{getChatTitle()}</h2>}
+            {selectedChat?.type !== 'group' && (
+              <div className="chat-title-row">
+                <h2>{getChatTitle()}</h2>
+                <button
+                  className="select-messages-btn"
+                  onClick={() => {
+                    setSelectMode((prev) => !prev);
+                    setSelectedMessageIds([]); // Clear selection when toggling
+                  }}
+                >
+                  {selectMode ? 'Cancel Selection' : 'Select Messages'}
+                </button>
+              </div>
+            )}
           </div>
+          {/* Forward bar for user-to-user chat */}
+          {selectedChat && selectedChat.type === 'user' && selectMode && selectedMessageIds.length > 0 && (
+            <button
+              className="forward-btn"
+              onClick={() => setShowForwardModal(true)}
+              style={{ marginLeft: 0, marginTop: '10px', marginBottom: '10px' }}
+            >
+              Forward ({selectedMessageIds.length})
+            </button>
+          )}
           {selectedChat?.type === 'group' && (
             <div className="group-members">
               <div className="group-members-header">
-                <span className="group-name-header">{getChatTitle()}</span>
+                <div className="chat-title-row">
+                  <span className="group-name-header">{getChatTitle()}</span>
+                  <button
+                    className="select-messages-btn"
+                    onClick={() => {
+                      setSelectMode((prev) => !prev);
+                      setSelectedMessageIds([]); // Clear selection when toggling
+                    }}
+                  >
+                    {selectMode ? 'Cancel Selection' : 'Select Messages'}
+                  </button>
+                </div>
                 <button
                   className="group-members-menu-btn"
                   onClick={() => setShowMembersMenu((prev) => !prev)}
@@ -624,6 +726,15 @@ const Chat = () => {
                   ☰
                 </button>
               </div>
+              {selectMode && selectedMessageIds.length > 0 && (
+                <button
+                  className="forward-btn"
+                  onClick={() => setShowForwardModal(true)}
+                  style={{ marginLeft: 0, marginTop: '10px', marginBottom: '10px' }}
+                >
+                  Forward ({selectedMessageIds.length})
+                </button>
+              )}
 
 
 
@@ -798,10 +909,47 @@ const Chat = () => {
                 userId={user?._id || ''}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
+                selectMode={selectMode}
+                selectedMessageIds={selectedMessageIds}
+                setSelectedMessageIds={setSelectedMessageIds}
               />
             ))}
             <div ref={messagesEndRef} />
           </div>
+          {showForwardModal && (
+            <div className="modal">
+              <div className="modal-content forward-modal">
+                <h5>Forward to...</h5>
+                <ul>
+                  {/* List users */}
+                  {users.filter(u => u._id !== user?._id).map(u => (
+                    <li key={u._id}>
+                      <button
+                        onClick={() => handleForward('user', u._id)}
+                        style={{ width: '100%' }}
+                      >
+                        {u.username}
+                      </button>
+                    </li>
+                  ))}
+                  {/* List groups */}
+                  {user?._id && groups
+                    .filter(g => Array.isArray(g.members) && g.members.includes(user._id))
+                    .map(g => (
+                      <li key={g._id}>
+                        <button
+                          onClick={() => handleForward('group', g._id)}
+                          style={{ width: '100%' }}
+                        >
+                          {g.name}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+                <button onClick={() => setShowForwardModal(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
           {/* Image Modal */}
           {modalImage && (
             <div className="image-modal-overlay" onClick={() => setModalImage(null)}>
