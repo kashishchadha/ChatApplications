@@ -471,11 +471,11 @@ const Chat = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      uploadFile(file);
+      uploadFile(file, input); // Pass the current input value
     }
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, message: string) => {
     if (!selectedChat || !token) {
       alert('Please select a chat first.');
       return;
@@ -500,7 +500,7 @@ const Chat = () => {
       const fileInfo = uploadResponse.data.file;
 
       const outgoing = {
-        content: `Sent: ${file.name}`,
+        content: message || `Sent: ${file.name}`,
         sender: user!._id,
         recipient: selectedChat.type === 'user' ? selectedChat.id : undefined,
         group: selectedChat.type === 'group' ? selectedChat.id : undefined,
