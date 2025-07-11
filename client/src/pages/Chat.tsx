@@ -865,36 +865,40 @@ const Chat = () => {
 
               {showAddMembers && (
                 <div className="modal">
-                  <div className="modal-content add-members-modal-content">
-                    <h5 className="add-members-title">Add Members</h5>
-                    <ul className="add-members-list">
-                      {users
-                        .filter(u => !groupMembers.some(m => m._id === u._id))
-                        .map(user => (
-                          <li key={user._id} className="add-member-item">
-                            <label className="add-member-label">
-                              <input
-                                type="checkbox"
-                                value={user._id}
-                                checked={selectedMembers.includes(user._id)}
-                                onChange={e => {
-                                  if (e.target.checked) {
-                                    setSelectedMembers(prev => [...prev, user._id]);
-                                  } else {
-                                    setSelectedMembers(prev => prev.filter(id => id !== user._id));
-                                  }
-                                }}
-                                className="add-member-checkbox"
-                              />
-                              <div className="add-member-avatar">{user.username[0].toUpperCase()}</div>
-                              <span>{user.username}</span>
-                            </label>
-                          </li>
-                        ))}
-                    </ul>
-                    <div className="add-members-actions">
-                      <button className="add-members-confirm-btn" onClick={handleAddMembers}>Add</button>
-                      <button className="add-members-cancel-btn" onClick={() => setShowAddMembers(false)}>Cancel</button>
+                  <div className="modal-content add-members-modal">
+                    <h5>Add Members</h5>
+                    <div className="add-members-form">
+                      <div className="members-section">
+                        <h6>Select Members to Add</h6>
+                        <ul>
+                          {users
+                            .filter(u => !groupMembers.some(m => m._id === u._id))
+                            .map(user => (
+                              <li key={user._id}>
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    value={user._id}
+                                    checked={selectedMembers.includes(user._id)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        setSelectedMembers(prev => [...prev, user._id]);
+                                      } else {
+                                        setSelectedMembers(prev => prev.filter(id => id !== user._id));
+                                      }
+                                    }}
+                                  />
+                                  <div className="member-avatar">{user.username[0].toUpperCase()}</div>
+                                  <span>{user.username}</span>
+                                </label>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                      <div className="button-group">
+                        <button onClick={handleAddMembers}>Add Members</button>
+                        <button onClick={() => setShowAddMembers(false)}>Cancel</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1021,37 +1025,44 @@ const Chat = () => {
 
         {showCreateGroup && (
           <div className="modal">
-            <div className="modal-content">
+            <div className="modal-content create-group-modal">
               <h5>Create New Group</h5>
-              <input
-                type="text"
-                placeholder="Group name"
-                value={newGroupName}
-                onChange={e => setNewGroupName(e.target.value)}
-              />
-              <ul>
-                {users.map(user => (
-                  <li key={user._id}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        value={user._id}
-                        checked={newGroupMembers.includes(user._id)}
-                        onChange={e => {
-                          if (e.target.checked) {
-                            setNewGroupMembers(prev => [...prev, user._id]);
-                          } else {
-                            setNewGroupMembers(prev => prev.filter(id => id !== user._id));
-                          }
-                        }}
-                      />
-                      {user.username}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-              <button onClick={handleCreateGroup}>Create</button>
-              <button onClick={() => setShowCreateGroup(false)}>Cancel</button>
+              <div className="create-group-form">
+                <input
+                  type="text"
+                  placeholder="Enter group name..."
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                />
+                <div className="members-section">
+                  <h6>Select Members</h6>
+                  <ul>
+                    {users.map(user => (
+                      <li key={user._id}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            value={user._id}
+                            checked={newGroupMembers.includes(user._id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setNewGroupMembers(prev => [...prev, user._id]);
+                              } else {
+                                setNewGroupMembers(prev => prev.filter(id => id !== user._id));
+                              }
+                            }}
+                          />
+                          {user.username}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="button-group">
+                  <button onClick={handleCreateGroup}>Create Group</button>
+                  <button onClick={() => setShowCreateGroup(false)}>Cancel</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
