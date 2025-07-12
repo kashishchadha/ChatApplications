@@ -8,6 +8,7 @@ import path from 'path';
 import authRoutes from './routes/auth';
 import Message from './models/Message';
 import Group from './models/Group';
+import User from './models/User';
 import groupRoutes from './routes/group';
 import messageRoutes from './routes/message';
 import userRoutes from './routes/user';
@@ -18,6 +19,9 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+
+// Store online users
+const onlineUsers = new Map<string, string>(); // userId -> socketId
 
 app.use(cors());
 app.use(express.json());
@@ -53,7 +57,27 @@ app.use('/api/upload', uploadRoutes);
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
- 
+  // Handle user authentication and online status
+  socket.on('userOnline', async (userId: string) => {
+    try {
+      // Update user's online status in database
+      await User.findByIdAndUpdate(userId, { 
+        isOnline: true, 
+        lastSeen: new Date() 
+      });
+      
+      // Store in memory for quick access
+      onlineUsers.set(userId, socket.id);
+      
+      // Emit to all clients that this user is online
+      io.emit('userStatusChange', { userId, isOnline: true });
+      
+      console.log(`User ${userId} is now online`);
+    } catch (error) {
+      console.error('Error updating user online status:', error);
+    }
+  });
+
   socket.on('joinGroup', (groupId) => {
     socket.join(groupId);
     console.log(`User ${socket.id} joined group ${groupId}`);
@@ -83,8 +107,8 @@ io.on('connection', (socket) => {
       // Save the message to DB
       const newMsg = await Message.create({
         sender: msg.sender,
-        recipient: msg.recipient,
         content: msg.content,
+        recipient: msg.recipient,
         createdAt: new Date(),
         fileAttachment: msg.fileAttachment || undefined,
         forwarded: msg.forwarded || false
@@ -97,8 +121,37 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);
+    
+    // Find the user ID for this socket
+    let disconnectedUserId: string | null = null;
+    for (const [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        disconnectedUserId = userId;
+        break;
+      }
+    }
+    
+    if (disconnectedUserId) {
+      try {
+        // Update user's offline status in database
+        await User.findByIdAndUpdate(disconnectedUserId, { 
+          isOnline: false, 
+          lastSeen: new Date() 
+        });
+        
+        // Remove from memory
+        onlineUsers.delete(disconnectedUserId);
+        
+        // Emit to all clients that this user is offline
+        io.emit('userStatusChange', { userId: disconnectedUserId, isOnline: false });
+        
+        console.log(`User ${disconnectedUserId} is now offline`);
+      } catch (error) {
+        console.error('Error updating user offline status:', error);
+      }
+    }
   });
 });
 

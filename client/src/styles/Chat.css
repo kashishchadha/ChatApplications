@@ -1411,3 +1411,73 @@
 .forward-modal button:hover {
   background: #0097a7;
 }
+
+/* User item with online status */
+.user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.username {
+  flex: 1;
+}
+
+.online-status {
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.online-status.online {
+  color: #4caf50;
+}
+
+.online-status.offline {
+  color: #9e9e9e;
+}
+
+/* Chat header online status */
+.chat-title-with-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.chat-title-with-status h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.header-online-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.header-online-status.online {
+  color: #4caf50;
+}
+
+.header-online-status.offline {
+  color: #9e9e9e;
+}
+
+/* Mobile responsive for online status */
+@media (max-width: 480px) {
+  .online-status {
+    font-size: 0.7rem;
+    margin-left: 0.3rem;
+  }
+  
+  .header-online-status {
+    font-size: 0.7rem;
+  }
+  
+  .chat-title-with-status h2 {
+    font-size: 1rem;
+  }
+}

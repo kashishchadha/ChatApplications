@@ -7,7 +7,7 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import EmojiPicker from '../components/EmojiPicker';
 
-type UserType = { _id: string; username: string };
+type UserType = { _id: string; username: string; isOnline?: boolean; lastSeen?: string };
 type GroupType = {
   _id: string;
   name: string;
@@ -293,9 +293,10 @@ const Chat = () => {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Listen for incoming messages
+  // Listen for incoming messages and user status changes
   useEffect(() => {
     if (!socket) return;
+    
     const handleReceive = (msg: MessageType) => {
       console.log('Received message:', msg, 'SelectedChat:', selectedChat, 'User:', user);
       // Always extract IDs as strings
@@ -318,9 +319,23 @@ const Chat = () => {
         setMessages(prev => [...prev, msg]);
       }
     };
+
+    const handleUserStatusChange = (data: { userId: string; isOnline: boolean }) => {
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user._id === data.userId 
+            ? { ...user, isOnline: data.isOnline }
+            : user
+        )
+      );
+    };
+
     socket.on('receiveMessage', handleReceive);
+    socket.on('userStatusChange', handleUserStatusChange);
+    
     return () => {
       socket.off('receiveMessage', handleReceive);
+      socket.off('userStatusChange', handleUserStatusChange);
     };
   }, [socket, selectedChat, user?._id, fetchMessages]);
 
@@ -547,6 +562,17 @@ const Chat = () => {
     return mimetype.startsWith('image/');
   };
 
+  const formatLastSeen = (lastSeen: string) => {
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
   // Add getChatTitle helper
   const getChatTitle = () => {
     if (!selectedChat) return '';
@@ -628,7 +654,12 @@ const Chat = () => {
                     if (window.innerWidth <= 768) setMobileView('chat');
                   }}
                 >
-                  {userItem.username}
+                  <div className="user-item">
+                    <span className="username">{userItem.username}</span>
+                    <span className={`online-status ${userItem.isOnline ? 'online' : 'offline'}`}>
+                      {userItem.isOnline ? '●' : '○'}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -680,7 +711,23 @@ const Chat = () => {
             )}
             {selectedChat?.type !== 'group' && (
               <div className="chat-title-row">
-                <h2>{getChatTitle()}</h2>
+                <div className="chat-title-with-status">
+                  <h2>{getChatTitle()}</h2>
+                  {selectedChat?.type === 'user' && (
+                    <span className={`header-online-status ${users.find(u => u._id === selectedChat.id)?.isOnline ? 'online' : 'offline'}`}>
+                      {(() => {
+                        const selectedUser = users.find(u => u._id === selectedChat.id);
+                        if (selectedUser?.isOnline) {
+                          return '● Online';
+                        } else if (selectedUser?.lastSeen) {
+                          return `○ Last seen ${formatLastSeen(selectedUser.lastSeen)}`;
+                        } else {
+                          return '○ Offline';
+                        }
+                      })()}
+                    </span>
+                  )}
+                </div>
                 <button
                   className="select-messages-btn"
                   onClick={() => {
