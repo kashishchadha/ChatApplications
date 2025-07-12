@@ -14,6 +14,8 @@ export interface IMessage extends Document {
     path: string;
   };
   forwarded?: boolean;
+  seenBy: string[]; // Array of user IDs who have seen the message
+  deliveredTo: string[]; // Array of user IDs who have received the message
 }
 
 const MessageSchema: Schema = new Schema({
@@ -29,7 +31,9 @@ const MessageSchema: Schema = new Schema({
     size: { type: Number },
     path: { type: String }
   },
-  forwarded: { type: Boolean, default: false }
+  forwarded: { type: Boolean, default: false },
+  seenBy: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
+  deliveredTo: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }]
 });
 
 export default mongoose.model<IMessage>('Message', MessageSchema);

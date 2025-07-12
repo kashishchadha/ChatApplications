@@ -1481,3 +1481,61 @@
     font-size: 1rem;
   }
 }
+
+/* Improved tick status styles */
+.tick-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  font-size: 0.85em;
+  vertical-align: middle;
+  user-select: none;
+}
+.tick-status [aria-label="Sent"],
+.tick-status [aria-label="Delivered"],
+.tick-status [aria-label="Seen"] {
+  font-size: 1em;
+}
+
+/* Add a subtle transition for color change */
+.tick-status span {
+  transition: color 0.2s;
+}
+
+/* Ensure tick is always at the bottom right of the message bubble */
+.chat-message .tick-status {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  margin-left: 0;
+}
+
+/* Adjust message bubble for tick space */
+.chat-message {
+  position: relative;
+  padding-bottom: 1.1em;
+}
+
+@media (max-width: 480px) {
+  .tick-status {
+    font-size: 0.8em;
+    margin-left: 2px;
+  }
+  .chat-message .tick-status {
+    right: 4px;
+    bottom: 2px;
+  }
+  .chat-message {
+    padding-bottom: 0.9em;
+  }
+}
+
+.tick-status [aria-label="Sent"],
+.tick-status [aria-label="Delivered"] {
+  color: #222;
+  font-weight: bold;
+}
+.tick-status [aria-label="Seen"] {
+  color: #2196f3;
+  font-weight: bold;
+}

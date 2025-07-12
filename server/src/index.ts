@@ -121,6 +121,36 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle message delivered (double tick)
+  socket.on('messageDelivered', async ({ messageId, userId }) => {
+    try {
+      const message = await Message.findById(messageId);
+      if (message && !message.deliveredTo.includes(userId)) {
+        message.deliveredTo.push(userId);
+        await message.save();
+        // Notify sender
+        io.to(message.sender.toString()).emit('messageDelivered', { messageId, userId });
+      }
+    } catch (err) {
+      console.error('Error updating deliveredTo:', err);
+    }
+  });
+
+  // Handle message seen (blue double tick)
+  socket.on('messageSeen', async ({ messageId, userId }) => {
+    try {
+      const message = await Message.findById(messageId);
+      if (message && !message.seenBy.includes(userId)) {
+        message.seenBy.push(userId);
+        await message.save();
+        // Notify sender
+        io.to(message.sender.toString()).emit('messageSeen', { messageId, userId });
+      }
+    } catch (err) {
+      console.error('Error updating seenBy:', err);
+    }
+  });
+
   socket.on('disconnect', async () => {
     console.log('User disconnected:', socket.id);
     

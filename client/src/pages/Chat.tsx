@@ -29,6 +29,8 @@ type MessageType = {
     path: string;
   };
   forwarded?: boolean; // <-- Add this line
+  deliveredTo?: string[]; // <-- Add this line
+  seenBy?: string[]; // <-- Add this line
 };
 
 const Chat = () => {
@@ -262,14 +264,35 @@ const Chat = () => {
             )}
 
             {msg.content && <div className="file-message-text">{msg.content}</div>}
-            {isSentByMe && (
-              <button
-                onClick={() => onDelete(msg._id)}
-                style={{ marginLeft: 8, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
-              >
-                Delete
-              </button>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 4 }}>
+  {isSentByMe && !selectMode && !msg.fileAttachment && (
+    <button
+      onClick={() => onDelete(msg._id)}
+      style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1em' }}
+    >
+      Delete
+    </button>
+  )}
+  <span className="tick-status" title={
+    isSentByMe
+      ? msg.seenBy && msg.seenBy.includes(getRecipientId(msg.recipient))
+        ? 'Seen'
+        : msg.deliveredTo && msg.deliveredTo.includes(getRecipientId(msg.recipient))
+          ? 'Delivered'
+          : 'Sent'
+      : ''
+  }>
+    {isSentByMe && (
+      msg.seenBy && msg.seenBy.includes(getRecipientId(msg.recipient)) ? (
+        <span style={{ color: '#2196f3', fontWeight: 'bold', fontSize: '1.1em' }} aria-label="Seen" role="img">✔✔</span>
+      ) : msg.deliveredTo && msg.deliveredTo.includes(getRecipientId(msg.recipient)) ? (
+        <span style={{ color: '#222', fontWeight: 'bold', fontSize: '1.1em' }} aria-label="Delivered" role="img">✔✔</span>
+      ) : (
+        <span style={{ color: '#222', fontWeight: 'bold', fontSize: '1.1em' }} aria-label="Sent" role="img">✔</span>
+      )
+    )}
+  </span>
+</div>
           </>
         )}
       </div>
@@ -346,9 +369,30 @@ const Chat = () => {
     }
   }, [socket, selectedChat]);
 
+  // 1. Emit delivered when a message is received
+  useEffect(() => {
+    if (!socket || !user || !messages.length) return;
+    messages.forEach((msg) => {
+      const isSentByMe = getSenderId(msg.sender) === user._id;
+      if (!isSentByMe) {
+        socket.emit('messageDelivered', { messageId: msg._id, userId: user._id });
+      }
+    });
+  }, [messages, socket, user]);
+
+  // 2. Emit seen when messages are visible (chat is open)
+  useEffect(() => {
+    if (!socket || !user || !messages.length) return;
+    // For simplicity, mark all as seen when chat is open
+    messages.forEach((msg) => {
+      const isSentByMe = getSenderId(msg.sender) === user._id;
+      if (!isSentByMe) {
+        socket.emit('messageSeen', { messageId: msg._id, userId: user._id });
+      }
+    });
+  }, [selectedChat, messages, socket, user]);
 
 
-  
   // Send message
   const handleSend = useCallback((e: React.FormEvent) => {
     e.preventDefault();
