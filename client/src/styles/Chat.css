@@ -1296,15 +1296,13 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 7rem;
-  color: #0b0b0b;
-  background: #e0f7fa;
-  border: 1px solid #b2ebf2;
+  font-size: 0.49rem;
+  color: #faf9f9;
   border-radius: 6px;
   padding: 1px 7px;
   z-index: 1;
   width: fit-content;
-  font-weight: 600;
+  font-weight: 800;
   box-shadow: 0 1px 3px rgba(0, 188, 212, 0.08);
   letter-spacing: 0.3px;
   text-transform: uppercase;
