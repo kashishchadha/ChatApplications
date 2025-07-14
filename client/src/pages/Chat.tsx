@@ -265,7 +265,7 @@ const Chat = () => {
 
             {msg.content && <div className="file-message-text">{msg.content}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 4 }}>
-  {isSentByMe && !selectMode && !msg.fileAttachment && (
+  {isSentByMe && !selectMode && (
     <button
       onClick={() => onDelete(msg._id)}
       style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1em' }}
