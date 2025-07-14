@@ -421,6 +421,52 @@ const Chat = () => {
     });
   }, [selectedChat, allMessages, socket, user]);
 
+  // Mark all messages as seen when chat is opened
+  useEffect(() => {
+    if (!socket || !user || !selectedChat) return;
+    // Find all unseen messages in the opened chat
+    allMessages.forEach((msg) => {
+      const isForThisChat =
+        (selectedChat.type === 'user' &&
+          ((getSenderId(msg.sender) === selectedChat.id && getRecipientId(msg.recipient) === user._id) ||
+           (getSenderId(msg.sender) === user._id && getRecipientId(msg.recipient) === selectedChat.id))) ||
+        (selectedChat.type === 'group' && msg.group === selectedChat.id);
+      const isSentByMe = getSenderId(msg.sender) === user._id;
+      const isSeen = msg.seenBy && msg.seenBy.includes(user._id);
+      if (isForThisChat && !isSentByMe && !isSeen) {
+        socket.emit('messageSeen', { messageId: msg._id, userId: user._id });
+        // Optimistically update seenBy for the current user
+        setAllMessages(prev =>
+          prev.map(m =>
+            m._id === msg._id
+              ? { ...m, seenBy: m.seenBy ? [...new Set([...m.seenBy, user._id])] : [user._id] }
+              : m
+          )
+        );
+      }
+    });
+  }, [selectedChat, allMessages, socket, user]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleSeenUpdate = ({ messageId, userId }: { messageId: string, userId: string }) => {
+      setAllMessages(prev =>
+        prev.map(msg =>
+          msg._id === messageId
+            ? { ...msg, seenBy: msg.seenBy ? [...new Set([...msg.seenBy, userId])] : [userId] }
+            : msg
+        )
+      );
+    };
+
+    socket.on('messageSeen', handleSeenUpdate);
+
+    return () => {
+      socket.off('messageSeen', handleSeenUpdate);
+    };
+  }, [socket]);
+
 
   // Send message
   const handleSend = useCallback((e: React.FormEvent) => {
@@ -694,6 +740,7 @@ const Chat = () => {
 
   // Helper: Get unread count for a chat
   const getUnreadCount = (chat: { type: 'user' | 'group', id: string }) => {
+    // Only count messages not seen by the current user
     return allMessages.filter(msg => {
       const isForThisChat =
         (chat.type === 'user' &&
@@ -742,6 +789,9 @@ const Chat = () => {
       if (unreadA !== unreadB) return unreadB - unreadA;
       return getLatestMessageTime({ type: 'group', id: a._id }) - getLatestMessageTime({ type: 'group', id: b._id });
     });
+
+  // Force re-render of sidebar when selectedChat or allMessages changes
+  useEffect(() => {}, [selectedChat, allMessages]);
 
   return (
     <>
