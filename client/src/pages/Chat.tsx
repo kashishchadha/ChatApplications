@@ -39,7 +39,8 @@ const Chat = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [selectedChat, setSelectedChat] = useState<{ type: 'user' | 'group'; id: string } | null>(null);
-  const [messages, setMessages] = useState<MessageType[]>([]);
+  // Replace messages state with allMessages
+  const [allMessages, setAllMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState('');
   const [groupMembers, setGroupMembers] = useState<UserType[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -113,13 +114,18 @@ const Chat = () => {
         if (selectedChat.type === 'user') {
           console.log('Fetched user-to-user messages:', res.data);
         }
-        setMessages(res.data);
+        // Update allMessages with the fetched messages
+        setAllMessages(prev => {
+          const ids = new Set(prev.map(m => m._id));
+          const newMsgs = res.data.filter((m: MessageType) => !ids.has(m._id));
+          return [...prev, ...newMsgs];
+        });
       });
   }, [selectedChat, token]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [allMessages]);
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -299,6 +305,19 @@ const Chat = () => {
     );
   });
 
+  // For displaying messages in the current chat
+  const currentMessages = allMessages.filter(msg => {
+    if (!selectedChat) return false;
+    if (selectedChat.type === 'user') {
+      return (
+        (getSenderId(msg.sender) === selectedChat.id && getRecipientId(msg.recipient) === user?._id) ||
+        (getSenderId(msg.sender) === user?._id && getRecipientId(msg.recipient) === selectedChat.id)
+      );
+    } else {
+      return msg.group === selectedChat.id;
+    }
+  });
+
   const fetchMessages = useCallback(() => {
     if (!selectedChat || !token) return;
     let url = '';
@@ -309,7 +328,13 @@ const Chat = () => {
     }
     axios
       .get(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setMessages(res.data));
+      .then(res => {
+        setAllMessages(prev => {
+          const ids = new Set(prev.map(m => m._id));
+          const newMsgs = res.data.filter((m: MessageType) => !ids.has(m._id));
+          return [...prev, ...newMsgs];
+        });
+      });
   }, [selectedChat, token]);
 
   useEffect(() => {
@@ -321,6 +346,10 @@ const Chat = () => {
     if (!socket) return;
     
     const handleReceive = (msg: MessageType) => {
+      setAllMessages(prev => {
+        if (prev.some(m => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
       console.log('Received message:', msg, 'SelectedChat:', selectedChat, 'User:', user);
       // Always extract IDs as strings
       const myId = user?._id || '';
@@ -334,12 +363,12 @@ const Chat = () => {
           (senderId === selectedId && recipientId === myId)
         )
       ) {
-        setMessages(prev => [...prev, msg]);
+        // setMessages(prev => [...prev, msg]); // This line is no longer needed
         // Fallback: refetch messages to ensure UI is up to date
         fetchMessages();
       }
       if (selectedChat?.type === 'group' && msg.group === selectedChat.id) {
-        setMessages(prev => [...prev, msg]);
+        // setMessages(prev => [...prev, msg]); // This line is no longer needed
       }
     };
 
@@ -371,26 +400,26 @@ const Chat = () => {
 
   // 1. Emit delivered when a message is received
   useEffect(() => {
-    if (!socket || !user || !messages.length) return;
-    messages.forEach((msg) => {
+    if (!socket || !user || !allMessages.length) return;
+    allMessages.forEach((msg) => {
       const isSentByMe = getSenderId(msg.sender) === user._id;
       if (!isSentByMe) {
         socket.emit('messageDelivered', { messageId: msg._id, userId: user._id });
       }
     });
-  }, [messages, socket, user]);
+  }, [allMessages, socket, user]);
 
   // 2. Emit seen when messages are visible (chat is open)
   useEffect(() => {
-    if (!socket || !user || !messages.length) return;
+    if (!socket || !user || !allMessages.length) return;
     // For simplicity, mark all as seen when chat is open
-    messages.forEach((msg) => {
+    allMessages.forEach((msg) => {
       const isSentByMe = getSenderId(msg.sender) === user._id;
       if (!isSentByMe) {
         socket.emit('messageSeen', { messageId: msg._id, userId: user._id });
       }
     });
-  }, [selectedChat, messages, socket, user]);
+  }, [selectedChat, allMessages, socket, user]);
 
 
   // Send message
@@ -417,17 +446,10 @@ const Chat = () => {
     };
     console.log('Emitting sendMessage:', outgoing);
 
-    const newMsg: MessageType = {
-      _id: Math.random().toString(36).substr(2, 9),
-      ...outgoing,
-      createdAt: new Date().toISOString(),
-      sender: { _id: user._id, username: user.username },
-      recipient: selectedChat.type === 'user'
-        ? { _id: selectedChat.id, username: users.find(u => u._id === selectedChat.id)?.username }
-        : undefined,
-    };
+    // Remove optimistic UI update:
+    // setAllMessages(prev => [...prev, newMsg]);
+    // Only emit to server, let socket event add the message
     if (selectedChat.type === 'user') {
-      setMessages(prev => [...prev, newMsg]); // Optimistic update ONLY for user-to-user
       socket.emit('sendMessage', {
         content: input,
         sender: user._id,
@@ -441,7 +463,7 @@ const Chat = () => {
       });
     }
     setInput('');
-  }, [input, selectedChat, socket, user, users]);
+  }, [input, selectedChat, socket, user, users, allMessages]);
 
   
   // Placeholder for group creation
@@ -511,7 +533,7 @@ const Chat = () => {
   const handleDeleteMessage = async (id: string) => {
     if (!id) return;
     // Optimistically remove from UI
-    setMessages(prev => prev.filter(msg => msg._id !== id));
+    setAllMessages(prev => prev.filter(msg => msg._id !== id));
     try {
       await axios.delete(
         `http://localhost:5000/api/messages/${id}`,
@@ -566,18 +588,9 @@ const Chat = () => {
         fileAttachment: fileInfo
       };
 
-      if (selectedChat.type === 'user') {
-        // Optimistically add for user-to-user
-        const newMsg: MessageType = {
-          _id: Math.random().toString(36).substr(2, 9),
-          ...outgoing,
-          createdAt: new Date().toISOString(),
-          sender: { _id: user!._id, username: user!.username },
-          recipient: { _id: selectedChat.id, username: users.find(u => u._id === selectedChat.id)?.username }
-        };
-        setMessages(prev => [...prev, newMsg]);
-      }
-
+      // Remove optimistic UI update:
+      // setAllMessages(prev => [...prev, newMsg]);
+      // Only emit to server, let socket event add the message
       socket?.emit('sendMessage', outgoing);
 
       setShowFileUpload(false);
@@ -654,7 +667,7 @@ const Chat = () => {
 
   const handleForward = async (type: 'user' | 'group', id: string) => {
     // Find the selected messages
-    const messagesToForward = messages.filter(msg => selectedMessageIds.includes(msg._id));
+    const messagesToForward = allMessages.filter(msg => selectedMessageIds.includes(msg._id));
     for (const msg of messagesToForward) {
       // Prepare the outgoing message
       const outgoing: any = {
@@ -679,6 +692,57 @@ const Chat = () => {
     if (window.innerWidth <= 768) setMobileView('chat');
   };
 
+  // Helper: Get unread count for a chat
+  const getUnreadCount = (chat: { type: 'user' | 'group', id: string }) => {
+    return allMessages.filter(msg => {
+      const isForThisChat =
+        (chat.type === 'user' &&
+          ((getSenderId(msg.sender) === chat.id && getRecipientId(msg.recipient) === user?._id) ||
+           (getSenderId(msg.sender) === user?._id && getRecipientId(msg.recipient) === chat.id))) ||
+        (chat.type === 'group' && msg.group === chat.id);
+      const isSentByMe = getSenderId(msg.sender) === user?._id;
+      const isSeen = msg.seenBy && msg.seenBy.includes(user?._id || '');
+      return isForThisChat && !isSentByMe && !isSeen;
+    }).length;
+  };
+  // Helper: Get latest message time for a chat
+  const getLatestMessageTime = (chat: { type: 'user' | 'group', id: string }) => {
+    const chatMessages = allMessages.filter(msg =>
+      (chat.type === 'user' &&
+        ((getSenderId(msg.sender) === chat.id && getRecipientId(msg.recipient) === user?._id) ||
+         (getSenderId(msg.sender) === user?._id && getRecipientId(msg.recipient) === chat.id))) ||
+      (chat.type === 'group' && msg.group === chat.id)
+    );
+    if (chatMessages.length === 0) return 0;
+    return Math.max(...chatMessages.map(msg => new Date(msg.createdAt).getTime()));
+  };
+
+  // Sidebar sorted users and groups
+  const sortedUsers = users
+    .filter(u => u._id !== user?._id)
+    .map(u => ({ ...u, chat: { type: 'user', id: u._id } }))
+    .sort((a, b) => {
+      const unreadA = getUnreadCount({ type: 'user', id: a._id });
+      const unreadB = getUnreadCount({ type: 'user', id: b._id });
+      if (unreadA !== unreadB) return unreadB - unreadA;
+      return getLatestMessageTime({ type: 'user', id: a._id }) - getLatestMessageTime({ type: 'user', id: b._id });
+    });
+  const sortedGroups = groups
+    .filter(group => {
+      if (!user) return false;
+      if (Array.isArray(group.members)) {
+        return group.members.includes(user._id);
+      }
+      return true;
+    })
+    .map(g => ({ ...g, chat: { type: 'group', id: g._id } }))
+    .sort((a, b) => {
+      const unreadA = getUnreadCount({ type: 'group', id: a._id });
+      const unreadB = getUnreadCount({ type: 'group', id: b._id });
+      if (unreadA !== unreadB) return unreadB - unreadA;
+      return getLatestMessageTime({ type: 'group', id: a._id }) - getLatestMessageTime({ type: 'group', id: b._id });
+    });
+
   return (
     <>
       {/* Show Navbar only on desktop, or on mobile when sidebar is visible */}
@@ -689,7 +753,7 @@ const Chat = () => {
           <div className="sidebar-section">
             <h3>Direct Messages</h3>
             <ul>
-              {users.filter(u => u._id !== user?._id).map(userItem => (
+              {sortedUsers.map(userItem => (
                 <li
                   key={userItem._id}
                   className={selectedChat?.type === 'user' && selectedChat.id === userItem._id ? 'active' : ''}
@@ -703,6 +767,11 @@ const Chat = () => {
                     <span className={`online-status ${userItem.isOnline ? 'online' : 'offline'}`}>
                       {userItem.isOnline ? '●' : '○'}
                     </span>
+                    {getUnreadCount({ type: 'user', id: userItem._id }) > 0 && (
+                      <span className="badge">
+                        {getUnreadCount({ type: 'user', id: userItem._id })}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}
@@ -711,26 +780,23 @@ const Chat = () => {
           <div className="sidebar-section">
             <h3>Groups</h3>
             <ul>
-              {groups
-                .filter(group => {
-                  if (!user) return false;
-                  if (Array.isArray(group.members)) {
-                    return group.members.includes(user._id);
-                  }
-                  return true;
-                })
-                .map(group => (
-                  <li
-                    key={group._id}
-                    className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
-                    onClick={() => {
-                      setSelectedChat({ type: 'group', id: group._id });
-                      if (window.innerWidth <= 768) setMobileView('chat');
-                    }}
-                  >
-                    {group.name}
-                  </li>
-                ))}
+              {sortedGroups.map(group => (
+                <li
+                  key={group._id}
+                  className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
+                  onClick={() => {
+                    setSelectedChat({ type: 'group', id: group._id });
+                    if (window.innerWidth <= 768) setMobileView('chat');
+                  }}
+                >
+                  {group.name}
+                  {getUnreadCount({ type: 'group', id: group._id }) > 0 && (
+                    <span className="badge">
+                      {getUnreadCount({ type: 'group', id: group._id })}
+                    </span>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
           <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
@@ -997,7 +1063,7 @@ const Chat = () => {
             </div>
           )}
           <div className="chat-messages">
-            {messages.map((msg) => (
+            {currentMessages.map((msg) => (
               <MessageItem
                 key={msg._id}
                 msg={msg}

@@ -41,3 +41,15 @@
   background: #e3f7fa;
   color: #0097a7;
 }
+
+.badge {
+  background: #e53935;
+  color: #fff;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.8em;
+  margin-left: 8px;
+  min-width: 20px;
+  display: inline-block;
+  text-align: center;
+}
