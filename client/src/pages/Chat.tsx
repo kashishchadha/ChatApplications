@@ -832,23 +832,27 @@ const Chat = () => {
           <div className="sidebar-section">
             <h3>Groups</h3>
             <ul>
-              {sortedGroups.map(group => (
-                <li
-                  key={group._id}
-                  className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
-                  onClick={() => {
-                    setSelectedChat({ type: 'group', id: group._id });
-                    if (window.innerWidth <= 768) setMobileView('chat');
-                  }}
-                >
-                  {group.name}
-                  {getUnreadCount({ type: 'group', id: group._id }) > 0 && (
-                    <span className="badge">
-                      {getUnreadCount({ type: 'group', id: group._id })}
-                    </span>
-                  )}
-                </li>
-              ))}
+              {sortedGroups.map(group => {
+                const count = getUnreadCount({ type: 'group', id: group._id });
+                console.log('Group:', group.name, 'Unread:', count);
+                return (
+                  <li
+                    key={group._id}
+                    className={selectedChat?.type === 'group' && selectedChat.id === group._id ? 'active' : ''}
+                    onClick={() => {
+                      setSelectedChat({ type: 'group', id: group._id });
+                      if (window.innerWidth <= 768) setMobileView('chat');
+                    }}
+                  >
+                    {group.name}
+                    {count > 0 && (
+                      <span className="badge">
+                        {count}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <button className='add-group-btn' onClick={() => setShowCreateGroup(true)}>+ Create Group</button>
