@@ -772,7 +772,8 @@ const Chat = () => {
       const unreadA = getUnreadCount({ type: 'user', id: a._id });
       const unreadB = getUnreadCount({ type: 'user', id: b._id });
       if (unreadA !== unreadB) return unreadB - unreadA;
-      return getLatestMessageTime({ type: 'user', id: a._id }) - getLatestMessageTime({ type: 'user', id: b._id });
+      // Sort by latest message time DESCENDING (most recent first)
+      return getLatestMessageTime({ type: 'user', id: b._id }) - getLatestMessageTime({ type: 'user', id: a._id });
     });
   const sortedGroups = groups
     .filter(group => {
@@ -787,7 +788,8 @@ const Chat = () => {
       const unreadA = getUnreadCount({ type: 'group', id: a._id });
       const unreadB = getUnreadCount({ type: 'group', id: b._id });
       if (unreadA !== unreadB) return unreadB - unreadA;
-      return getLatestMessageTime({ type: 'group', id: a._id }) - getLatestMessageTime({ type: 'group', id: b._id });
+      // Sort by latest message time DESCENDING (most recent first)
+      return getLatestMessageTime({ type: 'group', id: b._id }) - getLatestMessageTime({ type: 'group', id: a._id });
     });
 
   // Force re-render of sidebar when selectedChat or allMessages changes
