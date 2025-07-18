@@ -16,7 +16,8 @@ const Login = () => {
       e.preventDefault();
       setError('');
       try {
-        const res = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+        const res = await axios.post(`${apiBaseUrl}/auth/login`, { username, password });
         const user = res.data.user;
         const fixedUser = { ...user, _id: user._id || user.id };
         login(res.data.token, fixedUser);

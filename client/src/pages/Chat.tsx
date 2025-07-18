@@ -22,11 +22,10 @@ type MessageType = {
   group?: string;
   createdAt: string;
   fileAttachment?: {
-    filename: string;
-    originalName: string;
-    mimetype: string;
+    url: string;
+    name: string;
+    type: string;
     size: number;
-    path: string;
   };
   forwarded?: boolean; // <-- Add this line
   deliveredTo?: string[]; // <-- Add this line
@@ -86,13 +85,15 @@ const Chat = () => {
   // Fetch users and groups on mount
   useEffect(() => {
     if (!token) return;
-    axios.get('http://localhost:5000/api/users', { headers: { Authorization: `Bearer ${token}` } })
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    axios.get(`${apiBaseUrl}/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setUsers(res.data));
     fetchGroups();
   }, [token]);
 
   const fetchGroups = useCallback(() => {
-    axios.get('http://localhost:5000/api/groups/my', { headers: { Authorization: `Bearer ${token}` } })
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    axios.get(`${apiBaseUrl}/groups/my`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setGroups(res.data));
   }, [token]);
 
@@ -100,12 +101,13 @@ const Chat = () => {
   useEffect(() => {
     if (!selectedChat || !token) return;
     let url = '';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
     if (selectedChat.type === 'user') {
-      url = `http://localhost:5000/api/messages/user/${selectedChat.id}`;
+      url = `${apiBaseUrl}/messages/user/${selectedChat.id}`;
     } else {
-      url = `http://localhost:5000/api/messages/group/${selectedChat.id}`;
+      url = `${apiBaseUrl}/messages/group/${selectedChat.id}`;
       // Also fetch group members
-      axios.get(`http://localhost:5000/api/groups/${selectedChat.id}/members`, {
+      axios.get(`${apiBaseUrl}/groups/${selectedChat.id}/members`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setGroupMembers(res.data));
     }
@@ -231,30 +233,25 @@ const Chat = () => {
           </form>
         ) : (
           <>
-            {msg.fileAttachment && msg.fileAttachment.mimetype.startsWith('audio/') ? (
-              <audio controls style={{ marginTop: '10px', width: '100%' }}>
-                <source src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`} type={msg.fileAttachment.mimetype} />
-                Your browser does not support the audio element.
-              </audio>
-            ) : msg.fileAttachment && isImageFile(msg.fileAttachment.mimetype) ? (
+            {msg.fileAttachment?.type?.startsWith('image/') ? (
               <div className="image-attachment">
                 <img
-                  src={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                  alt={msg.fileAttachment.originalName}
+                  src={msg.fileAttachment.url}
+                  alt={msg.fileAttachment.name}
                   style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', cursor: 'pointer' }}
-                  onClick={() => setModalImage(`http://localhost:5000/uploads/${msg.fileAttachment?.filename}`)}
+                  onClick={() => setModalImage(msg.fileAttachment?.url || null)}
                 />
               </div>
             ) : msg.fileAttachment ? (
               <div className="file-attachment-info">
                 <div className="file-icon">📎</div>
                 <div className="file-details">
-                  <div className="file-name">{msg.fileAttachment.originalName}</div>
+                  <div className="file-name">{msg.fileAttachment.name}</div>
                   <div className="file-size">{formatFileSize(msg.fileAttachment.size)}</div>
                 </div>
                 <a
-                  href={`http://localhost:5000/uploads/${msg.fileAttachment.filename}`}
-                  download={msg.fileAttachment.originalName}
+                  href={msg.fileAttachment.url}
+                  download={msg.fileAttachment.name}
                   className="download-btn"
                 >
                   Download
@@ -322,9 +319,9 @@ const Chat = () => {
     if (!selectedChat || !token) return;
     let url = '';
     if (selectedChat.type === 'user') {
-      url = `http://localhost:5000/api/messages/user/${selectedChat.id}`;
+      url = `${import.meta.env.VITE_API_BASE_URL}/messages/user/${selectedChat.id}`;
     } else {
-      url = `http://localhost:5000/api/messages/group/${selectedChat.id}`;
+      url = `${import.meta.env.VITE_API_BASE_URL}/messages/group/${selectedChat.id}`;
     }
     axios
       .get(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -519,8 +516,9 @@ const Chat = () => {
       return;
     }
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       await axios.post(
-        'http://localhost:5000/api/groups/create',
+        `${apiBaseUrl}/groups/create`,
         { name: newGroupName, members: newGroupMembers },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -540,15 +538,16 @@ const Chat = () => {
   const handleAddMembers = async () => {
     if (!selectedChat || selectedChat.type !== 'group') return;
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       await axios.post(
-        `http://localhost:5000/api/groups/${selectedChat.id}/add-members`,
+        `${apiBaseUrl}/groups/${selectedChat.id}/add-members`,
         { members: selectedMembers },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setShowAddMembers(false);
       setSelectedMembers([]);
       // Refresh group members
-      axios.get(`http://localhost:5000/api/groups/${selectedChat.id}/members`, {
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/groups/${selectedChat.id}/members`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setGroupMembers(res.data));
     } catch (err) {
@@ -563,8 +562,9 @@ const Chat = () => {
   const handleEditMessage = async (id: string, newContent: string) => {
     if (!id || !newContent) return false;
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       await axios.put(
-        `http://localhost:5000/api/messages/${id}`,
+        `${apiBaseUrl}/messages/${id}`,
         { content: newContent },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -581,8 +581,9 @@ const Chat = () => {
     // Optimistically remove from UI
     setAllMessages(prev => prev.filter(msg => msg._id !== id));
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       await axios.delete(
-        `http://localhost:5000/api/messages/${id}`,
+        `${apiBaseUrl}/messages/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Optionally refetch messages here if you want to be sure
@@ -613,8 +614,9 @@ const Chat = () => {
     formData.append('file', file);
 
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       const uploadResponse = await axios.post(
-        'http://localhost:5000/api/upload/file',
+        `${apiBaseUrl}/upload/file`,
         formData,
         {
           headers: {
@@ -692,13 +694,14 @@ const Chat = () => {
   const handleRemoveMember = async (memberId: string) => {
     if (!selectedChat || selectedChat.type !== 'group') return;
     try {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
       await axios.post(
-        `http://localhost:5000/api/groups/${selectedChat.id}/remove-member`,
+        `${apiBaseUrl}/groups/${selectedChat.id}/remove-member`,
         { memberId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       // Refresh group members
-      axios.get(`http://localhost:5000/api/groups/${selectedChat.id}/members`, {
+      axios.get(`${import.meta.env.VITE_API_BASE_URL}/groups/${selectedChat.id}/members`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setGroupMembers(res.data));
     } catch (err: any) {
@@ -1048,8 +1051,9 @@ const Chat = () => {
                             onClick={async () => {
                               if (window.confirm('Are you sure you want to delete this group? This cannot be undone.')) {
                                 try {
+                                  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
                                   await axios.delete(
-                                    `http://localhost:5000/api/groups/${selectedChat.id}`,
+                                    `${apiBaseUrl}/groups/${selectedChat.id}`,
                                     { headers: { Authorization: `Bearer ${token}` } }
                                   );
                                   setGroups(prev => prev.filter(g => g._id !== selectedChat.id));

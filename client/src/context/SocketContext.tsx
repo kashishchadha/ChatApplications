@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (token && user && user._id) {
       console.log('Creating socket for user', user._id);
-      const s = io('http://localhost:5000', {
+      const s = io(import.meta.env.VITE_SOCKET_URL, {
         auth: { token }
       });
       s.on('connect', () => {
