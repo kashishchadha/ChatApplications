@@ -653,10 +653,6 @@ const Chat = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const isImageFile = (mimetype: string) => {
-    return mimetype.startsWith('image/');
-  };
-
   const formatLastSeen = (lastSeen: string) => {
     const date = new Date(lastSeen);
     const now = new Date();
