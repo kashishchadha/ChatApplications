@@ -51,7 +51,6 @@ const Chat = () => {
   const [showMembersMenu, setShowMembersMenu] = useState(false);
   
   // File upload states
-  const [showFileUpload, setShowFileUpload] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -531,10 +530,6 @@ const Chat = () => {
     }
   };
 
-  const handleOpenAddMembers = () => {
-    setShowAddMembers(true);
-  };
-
   const handleAddMembers = async () => {
     if (!selectedChat || selectedChat.type !== 'group') return;
     try {
@@ -553,10 +548,6 @@ const Chat = () => {
     } catch (err) {
       alert('Failed to add members.');
     }
-  };
-
-  const handleCloseAddMembers = () => {
-    setShowAddMembers(false);
   };
 
   const handleEditMessage = async (id: string, newContent: string) => {
@@ -641,7 +632,6 @@ const Chat = () => {
       // Only emit to server, let socket event add the message
       socket?.emit('sendMessage', outgoing);
 
-      setShowFileUpload(false);
       setInput('');
     } catch (error) {
       console.error('Upload error:', error);
